@@ -1,0 +1,49 @@
+@startuml
+
+class Empresa {
+- nomeFantasia: String
+- razaoSocial: String
+- cnpj: Cnpj
+- telefone: String
+- email: Email
+- List<Socio>: socios
+}
+
+class Usuario {
+- nome: String
+- email: Email
+- senha: String
+- perfil: PerfilUsuario
+}
+
+class Socio {
+- nome: String
+- cpf: Cpf
+- email: Email
+- telefone: Telefone
+}
+
+class Pasta {
+- nome: String
+- empresa: Empresa
+- caminho: String
+- List<Arquivo>: arquivos
+}
+
+class Arquivo {
+- nome: String
+- nomeOriginal: String
+- tamanho: Long
+- tipoArquivo: TipoArquivo
+- caminho: String
+}
+
+Empresa "1" -- "*" Usuario : possui
+Empresa "1" -- "*" Socio : possui
+Empresa "1" -- "*" Pasta : organiza
+Empresa "1" -- "*" Arquivo : contém
+
+Pasta "1" -- "*" Arquivo : contém
+Usuario "1" -- "*" Arquivo : envia
+
+@enduml
