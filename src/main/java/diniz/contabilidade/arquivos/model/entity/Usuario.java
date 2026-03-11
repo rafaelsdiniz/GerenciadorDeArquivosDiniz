@@ -53,11 +53,11 @@ public class Usuario extends DefaultEntity {
     }
 
     public PerfilUsuario getPerfilUsuario() {
-        return perfil;
+        return perfilUsuario;
     }
 
     public void setPerfilUsuario(PerfilUsuario perfil) {
-        this.perfil = perfil;
+        this.perfilUsuario = perfil;
     }
 
     public Empresa getEmpresa() {
