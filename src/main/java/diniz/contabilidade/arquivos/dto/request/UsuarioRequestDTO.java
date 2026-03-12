@@ -21,7 +21,7 @@ public record UsuarioRequestDTO(
     @NotNull(message = "O id da empresa é obrigatório.")
     Long idEmpresa,
 
-    @NotBlank(message = "O perfil do usuário é obrigatório.")
+    @NotNull(message = "O perfil do usuário é obrigatório.")
     PerfilUsuario perfilUsuario
 ) {
 }

@@ -5,6 +5,8 @@ import java.util.List;
 import diniz.contabilidade.arquivos.model.valueObject.Cnpj;
 import diniz.contabilidade.arquivos.model.valueObject.Email;
 import diniz.contabilidade.arquivos.model.valueObject.Telefone;
+import jakarta.persistence.AttributeOverride;
+import jakarta.persistence.Column;
 import jakarta.persistence.Embedded;
 import jakarta.persistence.Entity;
 import jakarta.persistence.OneToMany;
@@ -17,11 +19,15 @@ public class Empresa extends DefaultEntity {
     private String razaoSocial;
 
     @Embedded
+    @AttributeOverride(name = "numero", column = @Column(name = "cnpj"))
     private Cnpj cnpj;
 
+    @Embedded
+    @AttributeOverride(name = "numero", column = @Column(name = "telefone"))
     private Telefone telefone;
 
     @Embedded
+    @AttributeOverride(name = "endereco", column = @Column(name = "email"))
     private Email email;
 
     @OneToMany(mappedBy = "empresa")
@@ -33,8 +39,7 @@ public class Empresa extends DefaultEntity {
     @OneToMany(mappedBy = "empresa")
     private List<Pasta> pastas;
 
-    public Empresa(){
-
+    public Empresa() {
     }
 
     public String getNomeFantasia() {
@@ -100,6 +105,4 @@ public class Empresa extends DefaultEntity {
     public void setPastas(List<Pasta> pastas) {
         this.pastas = pastas;
     }
-
-    
 }
