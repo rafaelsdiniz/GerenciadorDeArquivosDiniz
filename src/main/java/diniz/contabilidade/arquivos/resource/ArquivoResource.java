@@ -1,28 +1,23 @@
 package diniz.contabilidade.arquivos.resource;
 
-import java.io.IOException;
+import java.io.InputStream;
 import java.nio.file.Files;
-import java.nio.file.Paths;
-import java.nio.file.StandardCopyOption;
+import java.util.UUID;
+
+import org.jboss.resteasy.reactive.MultipartForm;
 
 import diniz.contabilidade.arquivos.dto.request.ArquivoRequestDTO;
 import diniz.contabilidade.arquivos.dto.response.ArquivoResponseDTO;
 import diniz.contabilidade.arquivos.resource.form.ArquivoUploadForm;
 import diniz.contabilidade.arquivos.service.ArquivoService;
+import diniz.contabilidade.arquivos.service.MinioService;
+import jakarta.annotation.security.RolesAllowed;
 import jakarta.inject.Inject;
 import jakarta.validation.ValidationException;
-import jakarta.ws.rs.Consumes;
-import jakarta.ws.rs.DELETE;
-import jakarta.ws.rs.GET;
-import jakarta.ws.rs.NotFoundException;
-import jakarta.ws.rs.POST;
-import jakarta.ws.rs.Path;
-import jakarta.ws.rs.PathParam;
-import jakarta.ws.rs.Produces;
-import jakarta.ws.rs.WebApplicationException;
+import jakarta.ws.rs.*;
+import jakarta.ws.rs.core.HttpHeaders;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
-import org.eclipse.microprofile.config.inject.ConfigProperty;
 
 @Path("/arquivos")
 @Produces(MediaType.APPLICATION_JSON)
@@ -32,91 +27,150 @@ public class ArquivoResource {
     @Inject
     ArquivoService arquivoService;
 
-    @ConfigProperty(name = "app.upload.dir", defaultValue = "uploads")
-    String uploadDir;
+    @Inject
+    MinioService minioService;
 
     @GET
+    @RolesAllowed({"ADMIN","FUNCIONARIO"})
     public Response listar() {
         return Response.ok(arquivoService.listar()).build();
     }
 
     @GET
     @Path("/{id}")
+    @RolesAllowed({"ADMIN","FUNCIONARIO"})
     public Response buscarPorId(@PathParam("id") Long id) {
         return Response.ok(arquivoService.buscarPorId(id)).build();
     }
 
-    @GET
-    @Path("/empresa/{idEmpresa}")
-    public Response buscarPorEmpresa(@PathParam("idEmpresa") Long idEmpresa) {
-        return Response.ok(arquivoService.buscarPorEmpresa(idEmpresa)).build();
-    }
-
-    @GET
-    @Path("/pasta/{idPasta}")
-    public Response buscarPorPasta(@PathParam("idPasta") Long idPasta) {
-        return Response.ok(arquivoService.buscarPorPasta(idPasta)).build();
-    }
-
     @POST
-    @Consumes(MediaType.MULTIPART_FORM_DATA)
-    public Response upload(ArquivoUploadForm form) {
-        if (form == null || form.arquivo == null) {
-            throw new ValidationException("O arquivo é obrigatório.");
+@Consumes(MediaType.MULTIPART_FORM_DATA)
+@RolesAllowed({"ADMIN","FUNCIONARIO"})
+public Response upload(@MultipartForm ArquivoUploadForm form) {
+
+    System.out.println("===== INICIO UPLOAD =====");
+
+    if (form == null) {
+        System.out.println("Form veio null");
+        throw new ValidationException("Form inválido.");
+    }
+
+    if (form.arquivo == null) {
+        System.out.println("Arquivo veio null");
+        throw new ValidationException("Arquivo é obrigatório.");
+    }
+
+    try {
+
+        System.out.println("Arquivo recebido");
+
+        String nomeOriginal = form.arquivo.fileName();
+        java.nio.file.Path arquivoTemp = form.arquivo.uploadedFile();
+
+        System.out.println("Nome original: " + nomeOriginal);
+        System.out.println("Arquivo temp: " + arquivoTemp);
+        System.out.println("Content type: " + form.arquivo.contentType());
+
+        if (arquivoTemp == null) {
+            System.out.println("Arquivo temporário veio null");
+            throw new RuntimeException("Arquivo temporário não encontrado.");
         }
 
-        if (form.idEmpresa == null) {
-            throw new ValidationException("O id da empresa é obrigatório.");
+        long tamanho = Files.size(arquivoTemp);
+        System.out.println("Tamanho: " + tamanho);
+
+        String extensao = "";
+        int i = nomeOriginal.lastIndexOf(".");
+        if (i != -1) {
+            extensao = nomeOriginal.substring(i);
         }
 
-        if (form.idUsuario == null) {
-            throw new ValidationException("O id do usuário é obrigatório.");
-        }
+        System.out.println("Extensão detectada: " + extensao);
 
-        if (form.idPasta == null) {
-            throw new ValidationException("O id da pasta é obrigatório.");
-        }
+        String objectKey =
+                "empresa-" + form.idEmpresa +
+                "/pasta-" + form.idPasta +
+                "/" + UUID.randomUUID() + extensao;
 
-        try {
-            java.nio.file.Path diretorio = Paths.get(uploadDir);
-            Files.createDirectories(diretorio);
+        System.out.println("ObjectKey gerado: " + objectKey);
 
-            String nomeOriginal = form.arquivo.fileName();
-            java.nio.file.Path arquivoTemporario = form.arquivo.uploadedFile();
+        System.out.println("Iniciando upload para MinIO...");
 
-            java.nio.file.Path destino = diretorio.resolve(nomeOriginal);
-            Files.copy(arquivoTemporario, destino, StandardCopyOption.REPLACE_EXISTING);
+        try (InputStream input = Files.newInputStream(arquivoTemp)) {
 
-            ArquivoRequestDTO dto = new ArquivoRequestDTO(
-                    form.idEmpresa,
-                    form.idUsuario,
-                    form.idPasta
+            minioService.upload(
+                    objectKey,
+                    input,
+                    tamanho,
+                    form.arquivo.contentType()
             );
 
-            ArquivoResponseDTO responseDTO = arquivoService.salvar(
-                    dto,
-                    nomeOriginal,
-                    Files.size(destino),
-                    destino.toString()
-            );
-
-            return Response.status(Response.Status.CREATED)
-                    .entity(responseDTO)
-                    .build();
-
-        } catch (NotFoundException e) {
-            throw e;
-        } catch (IllegalArgumentException e) {
-            throw new WebApplicationException(e.getMessage(), Response.Status.BAD_REQUEST);
-        } catch (IOException e) {
-            throw new WebApplicationException("Erro ao salvar arquivo.", Response.Status.INTERNAL_SERVER_ERROR);
         }
+
+        System.out.println("Upload para MinIO concluído");
+
+        ArquivoRequestDTO dto = new ArquivoRequestDTO(
+                form.idEmpresa,
+                form.idUsuario,
+                form.idPasta
+        );
+
+        System.out.println("Salvando metadados no banco...");
+
+        ArquivoResponseDTO response =
+                arquivoService.salvar(
+                        dto,
+                        nomeOriginal,
+                        tamanho,
+                        objectKey
+                );
+
+        System.out.println("Registro salvo no banco com ID: " + response.id());
+
+        System.out.println("===== UPLOAD FINALIZADO =====");
+
+        return Response.status(Response.Status.CREATED)
+                .entity(response)
+                .build();
+
+    } catch (Exception e) {
+
+        System.out.println("===== ERRO NO UPLOAD =====");
+        e.printStackTrace();
+
+        return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+                .entity("Erro ao enviar arquivo: " + e.getMessage())
+                .build();
+    }
+}
+
+    @GET
+    @Path("/{id}/download")
+    @Produces(MediaType.APPLICATION_OCTET_STREAM)
+    @RolesAllowed({"ADMIN","FUNCIONARIO"})
+    public Response download(@PathParam("id") Long id){
+
+        ArquivoResponseDTO arquivo = arquivoService.buscarPorId(id);
+
+        InputStream stream = minioService.download(arquivo.caminho());
+
+        return Response.ok(stream)
+                .header(HttpHeaders.CONTENT_DISPOSITION,
+                        "attachment; filename=\"" + arquivo.nomeOriginal() + "\"")
+                .build();
     }
 
     @DELETE
     @Path("/{id}")
-    public Response deletar(@PathParam("id") Long id) {
+    @RolesAllowed({"ADMIN","FUNCIONARIO"})
+    public Response deletar(@PathParam("id") Long id){
+
+        ArquivoResponseDTO arquivo = arquivoService.buscarPorId(id);
+
+        minioService.delete(arquivo.caminho());
+
         arquivoService.deletar(id);
+
         return Response.noContent().build();
     }
 }

@@ -2,6 +2,7 @@ package diniz.contabilidade.arquivos.resource;
 
 import diniz.contabilidade.arquivos.dto.request.SocioRequestDTO;
 import diniz.contabilidade.arquivos.service.SocioService;
+import jakarta.annotation.security.RolesAllowed;
 import jakarta.inject.Inject;
 import jakarta.validation.Valid;
 import jakarta.ws.rs.Consumes;
@@ -24,23 +25,27 @@ public class SocioResource {
     SocioService socioService;
 
     @GET
+    @RolesAllowed({"ADMIN", "FUNCIONARIO"})
     public Response listar() {
         return Response.ok(socioService.listar()).build();
     }
 
     @GET
     @Path("/{id}")
+    @RolesAllowed({"ADMIN", "FUNCIONARIO"})
     public Response buscarPorId(@PathParam("id") Long id) {
         return Response.ok(socioService.buscarPorId(id)).build();
     }
 
     @GET
     @Path("/empresa/{idEmpresa}")
+    @RolesAllowed({"ADMIN", "FUNCIONARIO"})
     public Response buscarPorEmpresa(@PathParam("idEmpresa") Long idEmpresa) {
         return Response.ok(socioService.buscarPorEmpresa(idEmpresa)).build();
     }
 
     @POST
+    @RolesAllowed({"ADMIN", "FUNCIONARIO"})
     public Response salvar(@Valid SocioRequestDTO dto) {
         return Response.status(Response.Status.CREATED)
                 .entity(socioService.salvar(dto))
@@ -49,12 +54,14 @@ public class SocioResource {
 
     @PUT
     @Path("/{id}")
+    @RolesAllowed({"ADMIN", "FUNCIONARIO"})
     public Response atualizar(@PathParam("id") Long id, @Valid SocioRequestDTO dto) {
         return Response.ok(socioService.atualizar(id, dto)).build();
     }
 
     @DELETE
     @Path("/{id}")
+    @RolesAllowed({"ADMIN", "FUNCIONARIO"})
     public Response deletar(@PathParam("id") Long id) {
         socioService.deletar(id);
         return Response.noContent().build();

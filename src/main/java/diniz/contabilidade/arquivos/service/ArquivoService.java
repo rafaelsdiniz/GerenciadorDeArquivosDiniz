@@ -69,7 +69,7 @@ public class ArquivoService {
     }
 
     @Transactional
-    public ArquivoResponseDTO salvar(ArquivoRequestDTO dto, String nomeOriginal, Long tamanho, String caminho) {
+    public ArquivoResponseDTO salvar(ArquivoRequestDTO dto, String nomeOriginal, Long tamanho, String objectKey) {
         Empresa empresa = empresaRepository.findByIdOptional(dto.idEmpresa())
                 .orElseThrow(() -> new NotFoundException("Empresa não encontrada."));
 
@@ -94,7 +94,7 @@ public class ArquivoService {
         arquivo.setNomeOriginal(nomeOriginal);
         arquivo.setNome(gerarNomeArquivo(nomeOriginal));
         arquivo.setTamanho(tamanho);
-        arquivo.setCaminho(caminho);
+        arquivo.setCaminho(objectKey);
         arquivo.setTipoArquivo(identificarTipoArquivo(nomeOriginal));
 
         arquivoRepository.persist(arquivo);

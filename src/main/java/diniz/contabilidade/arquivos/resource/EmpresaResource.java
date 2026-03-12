@@ -2,6 +2,7 @@ package diniz.contabilidade.arquivos.resource;
 
 import diniz.contabilidade.arquivos.dto.request.EmpresaRequestDTO;
 import diniz.contabilidade.arquivos.service.EmpresaService;
+import jakarta.annotation.security.RolesAllowed;
 import jakarta.inject.Inject;
 import jakarta.validation.Valid;
 import jakarta.ws.rs.Consumes;
@@ -24,17 +25,20 @@ public class EmpresaResource {
     EmpresaService empresaService;
 
     @GET
+    @RolesAllowed({"ADMIN", "FUNCIONARIO"})
     public Response listar() {
         return Response.ok(empresaService.listar()).build();
     }
 
     @GET
     @Path("/{id}")
+    @RolesAllowed({"ADMIN", "FUNCIONARIO"})
     public Response buscarPorId(@PathParam("id") Long id) {
         return Response.ok(empresaService.buscarPorId(id)).build();
     }
 
     @POST
+    @RolesAllowed({"ADMIN", "FUNCIONARIO"})
     public Response salvar(@Valid EmpresaRequestDTO dto) {
         return Response.status(Response.Status.CREATED)
                 .entity(empresaService.salvar(dto))
@@ -43,12 +47,14 @@ public class EmpresaResource {
 
     @PUT
     @Path("/{id}")
+    @RolesAllowed({"ADMIN", "FUNCIONARIO"})
     public Response atualizar(@PathParam("id") Long id, @Valid EmpresaRequestDTO dto) {
         return Response.ok(empresaService.atualizar(id, dto)).build();
     }
 
     @DELETE
     @Path("/{id}")
+    @RolesAllowed({"ADMIN"})
     public Response deletar(@PathParam("id") Long id) {
         empresaService.deletar(id);
         return Response.noContent().build();
