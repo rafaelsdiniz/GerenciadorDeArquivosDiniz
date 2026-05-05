@@ -16,33 +16,24 @@ public class Socio extends DefaultEntity {
     @ManyToOne
     private Empresa empresa;
 
-    public Socio(){
+    private Double participacao;
 
-    }
+    private Boolean administrador;
 
-    public String getNome() {
-        return nome;
-    }
+    public Socio() {}
 
-    public void setNome(String nome) {
-        this.nome = nome;
-    }
+    public String getNome() { return nome; }
+    public void setNome(String nome) { this.nome = nome; }
 
-    public Cpf getCpf() {
-        return cpf;
-    }
+    public Cpf getCpf() { return cpf; }
+    public void setCpf(Cpf cpf) { this.cpf = cpf; }
 
-    public void setCpf(Cpf cpf) {
-        this.cpf = cpf;
-    }
+    public Empresa getEmpresa() { return empresa; }
+    public void setEmpresa(Empresa empresa) { this.empresa = empresa; }
 
-    public Empresa getEmpresa() {
-        return empresa;
-    }
+    public Double getParticipacao() { return participacao; }
+    public void setParticipacao(Double participacao) { this.participacao = participacao; }
 
-    public void setEmpresa(Empresa empresa) {
-        this.empresa = empresa;
-    }
-
-    
+    public Boolean getAdministrador() { return administrador; }
+    public void setAdministrador(Boolean administrador) { this.administrador = administrador; }
 }

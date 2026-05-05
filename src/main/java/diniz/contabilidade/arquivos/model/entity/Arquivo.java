@@ -1,5 +1,10 @@
 package diniz.contabilidade.arquivos.model.entity;
 
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+
+import diniz.contabilidade.arquivos.model.enums.CategoriaFiscal;
+import diniz.contabilidade.arquivos.model.enums.StatusArquivo;
 import diniz.contabilidade.arquivos.model.enums.TipoArquivo;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -8,7 +13,7 @@ import jakarta.persistence.ManyToOne;
 
 @Entity
 public class Arquivo extends DefaultEntity{
-    
+
     private String nome;
     private String nomeOriginal;
     private Long tamanho;
@@ -18,7 +23,22 @@ public class Arquivo extends DefaultEntity{
 
     private String caminho;
 
+    @jakarta.persistence.Column(columnDefinition="TEXT")
+    private String arquivoBase64;
+
     private String hash;
+
+    private String descricao;
+
+    private LocalDate dataVencimento;
+
+    @Enumerated(EnumType.STRING)
+    private StatusArquivo status;
+
+    @Enumerated(EnumType.STRING)
+    private CategoriaFiscal categoriaFiscal;
+
+    private LocalDateTime excluidoEm;
 
     @ManyToOne
     private Empresa empresa;
@@ -28,6 +48,9 @@ public class Arquivo extends DefaultEntity{
 
     @ManyToOne
     private Pasta pasta;
+
+    @ManyToOne
+    private ObrigacaoPendente obrigacaoPendente;
 
     public String getNome() {
         return nome;
@@ -71,6 +94,14 @@ public class Arquivo extends DefaultEntity{
         this.caminho = caminho;
     }
 
+    public String getArquivoBase64() {
+        return arquivoBase64;
+    }
+
+    public void setArquivoBase64(String arquivoBase64) {
+        this.arquivoBase64 = arquivoBase64;
+    }
+
     public Empresa getEmpresa() {
         return empresa;
     }
@@ -103,5 +134,51 @@ public class Arquivo extends DefaultEntity{
         this.hash = hash;
     }
 
-    
+    public String getDescricao() {
+        return descricao;
+    }
+
+    public void setDescricao(String descricao) {
+        this.descricao = descricao;
+    }
+
+    public LocalDate getDataVencimento() {
+        return dataVencimento;
+    }
+
+    public void setDataVencimento(LocalDate dataVencimento) {
+        this.dataVencimento = dataVencimento;
+    }
+
+    public StatusArquivo getStatus() {
+        return status;
+    }
+
+    public void setStatus(StatusArquivo status) {
+        this.status = status;
+    }
+
+    public ObrigacaoPendente getObrigacaoPendente() {
+        return obrigacaoPendente;
+    }
+
+    public void setObrigacaoPendente(ObrigacaoPendente obrigacaoPendente) {
+        this.obrigacaoPendente = obrigacaoPendente;
+    }
+
+    public CategoriaFiscal getCategoriaFiscal() {
+        return categoriaFiscal;
+    }
+
+    public void setCategoriaFiscal(CategoriaFiscal categoriaFiscal) {
+        this.categoriaFiscal = categoriaFiscal;
+    }
+
+    public LocalDateTime getExcluidoEm() {
+        return excluidoEm;
+    }
+
+    public void setExcluidoEm(LocalDateTime excluidoEm) {
+        this.excluidoEm = excluidoEm;
+    }
 }

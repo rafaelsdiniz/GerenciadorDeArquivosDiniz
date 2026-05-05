@@ -1,18 +1,26 @@
 package diniz.contabilidade.arquivos.resource;
 
 import java.io.InputStream;
+import java.io.ByteArrayInputStream;
 import java.nio.file.Files;
+import java.time.LocalDate;
 import java.util.UUID;
+import java.util.Base64;
 
+import org.jboss.logging.Logger;
 import org.jboss.resteasy.reactive.MultipartForm;
 
 import diniz.contabilidade.arquivos.dto.request.ArquivoRequestDTO;
 import diniz.contabilidade.arquivos.dto.response.ArquivoResponseDTO;
+import diniz.contabilidade.arquivos.model.entity.Arquivo;
+import diniz.contabilidade.arquivos.exception.ErroPayload;
+import diniz.contabilidade.arquivos.model.enums.CategoriaFiscal;
+import diniz.contabilidade.arquivos.model.enums.StatusArquivo;
 import diniz.contabilidade.arquivos.resource.form.ArquivoUploadForm;
 import diniz.contabilidade.arquivos.service.ArquivoService;
-import diniz.contabilidade.arquivos.service.MinioService;
 import jakarta.annotation.security.RolesAllowed;
 import jakarta.inject.Inject;
+import jakarta.validation.Valid;
 import jakarta.validation.ValidationException;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.HttpHeaders;
@@ -24,11 +32,10 @@ import jakarta.ws.rs.core.Response;
 @Consumes(MediaType.APPLICATION_JSON)
 public class ArquivoResource {
 
-    @Inject
-    ArquivoService arquivoService;
+    private static final Logger LOG = Logger.getLogger(ArquivoResource.class);
 
     @Inject
-    MinioService minioService;
+    ArquivoService arquivoService;
 
     @GET
     @RolesAllowed({"ADMIN","FUNCIONARIO"})
@@ -43,106 +50,150 @@ public class ArquivoResource {
         return Response.ok(arquivoService.buscarPorId(id)).build();
     }
 
+    @GET
+    @Path("/empresa/{idEmpresa}")
+    @RolesAllowed({"ADMIN","FUNCIONARIO"})
+    public Response buscarPorEmpresa(@PathParam("idEmpresa") Long idEmpresa) {
+        return Response.ok(arquivoService.buscarPorEmpresa(idEmpresa)).build();
+    }
+
+    @GET
+    @Path("/vencendo")
+    @RolesAllowed({"ADMIN","FUNCIONARIO"})
+    public Response vencendoEm(@QueryParam("dias") @DefaultValue("7") int dias) {
+        return Response.ok(arquivoService.buscarVencendoEm(dias)).build();
+    }
+
+    @GET
+    @Path("/vencidos")
+    @RolesAllowed({"ADMIN","FUNCIONARIO"})
+    public Response vencidos() {
+        return Response.ok(arquivoService.buscarVencidos()).build();
+    }
+
+    @GET
+    @Path("/por-status")
+    @RolesAllowed({"ADMIN","FUNCIONARIO"})
+    public Response porStatus(@QueryParam("status") StatusArquivo status) {
+        return Response.ok(arquivoService.buscarPorStatus(status)).build();
+    }
+
+    @GET
+    @Path("/por-categoria")
+    @RolesAllowed({"ADMIN","FUNCIONARIO"})
+    public Response porCategoria(@QueryParam("categoria") CategoriaFiscal categoria) {
+        return Response.ok(arquivoService.buscarPorCategoria(categoria)).build();
+    }
+
+    @GET
+    @Path("/lixeira")
+    @RolesAllowed({"ADMIN","FUNCIONARIO"})
+    public Response lixeira() {
+        return Response.ok(arquivoService.listarLixeira()).build();
+    }
+
+    @PATCH
+    @Path("/{id}/status")
+    @RolesAllowed({"ADMIN","FUNCIONARIO"})
+    public Response atualizarStatus(@PathParam("id") Long id, @QueryParam("status") StatusArquivo status) {
+        return Response.ok(arquivoService.atualizarStatus(id, status)).build();
+    }
+
+    @PATCH
+    @Path("/{id}/vencimento")
+    @RolesAllowed({"ADMIN","FUNCIONARIO"})
+    public Response atualizarVencimento(@PathParam("id") Long id, @QueryParam("dataVencimento") LocalDate dataVencimento) {
+        return Response.ok(arquivoService.atualizarVencimento(id, dataVencimento)).build();
+    }
+
     @POST
-@Consumes(MediaType.MULTIPART_FORM_DATA)
-@RolesAllowed({"ADMIN","FUNCIONARIO"})
-public Response upload(@MultipartForm ArquivoUploadForm form) {
-
-    System.out.println("===== INICIO UPLOAD =====");
-
-    if (form == null) {
-        System.out.println("Form veio null");
-        throw new ValidationException("Form inválido.");
+    @Path("/{id}/restaurar")
+    @RolesAllowed({"ADMIN","FUNCIONARIO"})
+    public Response restaurar(@PathParam("id") Long id) {
+        return Response.ok(arquivoService.restaurar(id)).build();
     }
 
-    if (form.arquivo == null) {
-        System.out.println("Arquivo veio null");
-        throw new ValidationException("Arquivo é obrigatório.");
+    @PATCH
+    @Path("/{id}/pasta")
+    @RolesAllowed({"ADMIN","FUNCIONARIO"})
+    public Response moverParaPasta(@PathParam("id") Long id, @QueryParam("idPasta") Long idPasta) {
+        return Response.ok(arquivoService.moverParaPasta(id, idPasta)).build();
     }
 
-    try {
+    @POST
+    @Consumes(MediaType.MULTIPART_FORM_DATA)
+    @RolesAllowed({"ADMIN","FUNCIONARIO"})
+    public Response upload(@MultipartForm @Valid ArquivoUploadForm form) {
 
-        System.out.println("Arquivo recebido");
-
-        String nomeOriginal = form.arquivo.fileName();
-        java.nio.file.Path arquivoTemp = form.arquivo.uploadedFile();
-
-        System.out.println("Nome original: " + nomeOriginal);
-        System.out.println("Arquivo temp: " + arquivoTemp);
-        System.out.println("Content type: " + form.arquivo.contentType());
-
-        if (arquivoTemp == null) {
-            System.out.println("Arquivo temporário veio null");
-            throw new RuntimeException("Arquivo temporário não encontrado.");
+        if (form == null) {
+            throw new ValidationException("Form inválido.");
         }
 
-        long tamanho = Files.size(arquivoTemp);
-        System.out.println("Tamanho: " + tamanho);
-
-        String extensao = "";
-        int i = nomeOriginal.lastIndexOf(".");
-        if (i != -1) {
-            extensao = nomeOriginal.substring(i);
+        if (form.arquivo == null) {
+            throw new ValidationException("Arquivo é obrigatório.");
         }
 
-        System.out.println("Extensão detectada: " + extensao);
+        try {
 
-        String objectKey =
-                "empresa-" + form.idEmpresa +
-                "/pasta-" + form.idPasta +
-                "/" + UUID.randomUUID() + extensao;
+            String nomeOriginal = form.arquivo.fileName();
+            java.nio.file.Path arquivoTemp = form.arquivo.uploadedFile();
 
-        System.out.println("ObjectKey gerado: " + objectKey);
+            if (arquivoTemp == null) {
+                throw new RuntimeException("Arquivo temporário não encontrado.");
+            }
 
-        System.out.println("Iniciando upload para MinIO...");
+            long tamanho = Files.size(arquivoTemp);
 
-        try (InputStream input = Files.newInputStream(arquivoTemp)) {
+            String extensao = "";
+            int i = nomeOriginal.lastIndexOf(".");
+            if (i != -1) {
+                extensao = nomeOriginal.substring(i);
+            }
 
-            minioService.upload(
-                    objectKey,
-                    input,
-                    tamanho,
-                    form.arquivo.contentType()
+            String base64String;
+            try (InputStream input = Files.newInputStream(arquivoTemp)) {
+                byte[] bytes = input.readAllBytes();
+                base64String = Base64.getEncoder().encodeToString(bytes);
+            }
+
+            ArquivoRequestDTO dto = new ArquivoRequestDTO(
+                    form.idEmpresa,
+                    form.idUsuario,
+                    form.idPasta,
+                    form.descricao,
+                    form.dataVencimento,
+                    form.idObrigacaoPendente,
+                    form.categoriaFiscal
             );
 
+            ArquivoResponseDTO response =
+                    arquivoService.salvar(
+                            dto,
+                            nomeOriginal,
+                            tamanho,
+                            base64String
+                    );
+
+            return Response.status(Response.Status.CREATED)
+                    .entity(response)
+                    .build();
+
+        } catch (IllegalArgumentException | ValidationException e) {
+            return Response.status(Response.Status.BAD_REQUEST)
+                    .entity(new ErroPayload("VALIDATION", e.getMessage()))
+                    .build();
+        } catch (jakarta.ws.rs.NotFoundException e) {
+            return Response.status(Response.Status.NOT_FOUND)
+                    .entity(new ErroPayload("NOT_FOUND", e.getMessage()))
+                    .build();
+        } catch (Exception e) {
+            LOG.error("Erro ao enviar arquivo.", e);
+
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+                    .entity(new ErroPayload("UPLOAD_ERROR", "Erro ao enviar arquivo: " + e.getMessage()))
+                    .build();
         }
-
-        System.out.println("Upload para MinIO concluído");
-
-        ArquivoRequestDTO dto = new ArquivoRequestDTO(
-                form.idEmpresa,
-                form.idUsuario,
-                form.idPasta
-        );
-
-        System.out.println("Salvando metadados no banco...");
-
-        ArquivoResponseDTO response =
-                arquivoService.salvar(
-                        dto,
-                        nomeOriginal,
-                        tamanho,
-                        objectKey
-                );
-
-        System.out.println("Registro salvo no banco com ID: " + response.id());
-
-        System.out.println("===== UPLOAD FINALIZADO =====");
-
-        return Response.status(Response.Status.CREATED)
-                .entity(response)
-                .build();
-
-    } catch (Exception e) {
-
-        System.out.println("===== ERRO NO UPLOAD =====");
-        e.printStackTrace();
-
-        return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                .entity("Erro ao enviar arquivo: " + e.getMessage())
-                .build();
     }
-}
 
     @GET
     @Path("/{id}/download")
@@ -150,27 +201,36 @@ public Response upload(@MultipartForm ArquivoUploadForm form) {
     @RolesAllowed({"ADMIN","FUNCIONARIO"})
     public Response download(@PathParam("id") Long id){
 
-        ArquivoResponseDTO arquivo = arquivoService.buscarPorId(id);
+        Arquivo arquivo = arquivoService.buscarEntidadePorId(id);
 
-        InputStream stream = minioService.download(arquivo.caminho());
+        if (arquivo.getArquivoBase64() == null) {
+            throw new NotFoundException("Arquivo físico não encontrado (dado de teste sem conteúdo).");
+        }
+
+        byte[] bytes = Base64.getDecoder().decode(arquivo.getArquivoBase64());
+        InputStream stream = new ByteArrayInputStream(bytes);
+
+        arquivoService.registrarDownload(id, arquivo.getNomeOriginal());
 
         return Response.ok(stream)
                 .header(HttpHeaders.CONTENT_DISPOSITION,
-                        "attachment; filename=\"" + arquivo.nomeOriginal() + "\"")
+                        "attachment; filename=\"" + arquivo.getNomeOriginal() + "\"")
                 .build();
     }
 
     @DELETE
     @Path("/{id}")
     @RolesAllowed({"ADMIN","FUNCIONARIO"})
-    public Response deletar(@PathParam("id") Long id){
+    public Response excluir(@PathParam("id") Long id){
+        arquivoService.excluir(id);
+        return Response.noContent().build();
+    }
 
-        ArquivoResponseDTO arquivo = arquivoService.buscarPorId(id);
-
-        minioService.delete(arquivo.caminho());
-
-        arquivoService.deletar(id);
-
+    @DELETE
+    @Path("/{id}/permanente")
+    @RolesAllowed("ADMIN")
+    public Response excluirPermanente(@PathParam("id") Long id){
+        arquivoService.excluirPermanente(id);
         return Response.noContent().build();
     }
 }

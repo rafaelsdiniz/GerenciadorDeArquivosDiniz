@@ -33,14 +33,12 @@ public class SocioService {
     public SocioResponseDTO buscarPorId(Long id) {
         Socio socio = socioRepository.findByIdOptional(id)
                 .orElseThrow(() -> new NotFoundException("Sócio não encontrado."));
-
         return toResponseDTO(socio);
     }
 
     public List<SocioResponseDTO> buscarPorEmpresa(Long idEmpresa) {
         Empresa empresa = empresaRepository.findByIdOptional(idEmpresa)
                 .orElseThrow(() -> new NotFoundException("Empresa não encontrada."));
-
         return socioRepository.buscarPorEmpresa(empresa)
                 .stream()
                 .map(this::toResponseDTO)
@@ -49,7 +47,6 @@ public class SocioService {
 
     @Transactional
     public SocioResponseDTO salvar(SocioRequestDTO dto) {
-
         Empresa empresa = empresaRepository.findByIdOptional(dto.idEmpresa())
                 .orElseThrow(() -> new NotFoundException("Empresa não encontrada."));
 
@@ -57,15 +54,15 @@ public class SocioService {
         socio.setNome(dto.nome());
         socio.setCpf(new Cpf(dto.cpf()));
         socio.setEmpresa(empresa);
+        socio.setParticipacao(dto.participacao());
+        socio.setAdministrador(dto.administrador());
 
         socioRepository.persist(socio);
-
         return toResponseDTO(socio);
     }
 
     @Transactional
     public SocioResponseDTO atualizar(Long id, SocioRequestDTO dto) {
-
         Socio socio = socioRepository.findByIdOptional(id)
                 .orElseThrow(() -> new NotFoundException("Sócio não encontrado."));
 
@@ -75,26 +72,27 @@ public class SocioService {
         socio.setNome(dto.nome());
         socio.setCpf(new Cpf(dto.cpf()));
         socio.setEmpresa(empresa);
+        socio.setParticipacao(dto.participacao());
+        socio.setAdministrador(dto.administrador());
 
         return toResponseDTO(socio);
     }
 
     @Transactional
     public void deletar(Long id) {
-
         Socio socio = socioRepository.findByIdOptional(id)
                 .orElseThrow(() -> new NotFoundException("Sócio não encontrado."));
-
         socioRepository.delete(socio);
     }
 
     private SocioResponseDTO toResponseDTO(Socio socio) {
-
         return new SocioResponseDTO(
                 socio.getId(),
                 socio.getNome(),
-                socio.getCpf().getNumero(),
-                socio.getEmpresa().getId()
+                socio.getCpf() != null ? socio.getCpf().getNumero() : null,
+                socio.getEmpresa() != null ? socio.getEmpresa().getId() : null,
+                socio.getParticipacao(),
+                socio.getAdministrador()
         );
     }
 }

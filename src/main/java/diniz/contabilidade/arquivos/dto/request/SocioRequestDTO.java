@@ -12,6 +12,9 @@ public record SocioRequestDTO(
     String cpf,
 
     @NotNull(message = "O id da empresa é obrigatório")
-    Long idEmpresa
-) {
-}
+    Long idEmpresa,
+
+    Double participacao,
+    Boolean administrador
+
+) {}

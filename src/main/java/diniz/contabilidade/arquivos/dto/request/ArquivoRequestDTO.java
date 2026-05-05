@@ -1,5 +1,8 @@
 package diniz.contabilidade.arquivos.dto.request;
 
+import java.time.LocalDate;
+
+import diniz.contabilidade.arquivos.model.enums.CategoriaFiscal;
 import jakarta.validation.constraints.NotNull;
 
 public record ArquivoRequestDTO(
@@ -11,6 +14,14 @@ public record ArquivoRequestDTO(
     Long idUsuario,
 
     @NotNull(message = "O id da pasta é obrigatório.")
-    Long idPasta
+    Long idPasta,
+
+    String descricao,
+
+    LocalDate dataVencimento,
+
+    Long idObrigacaoPendente,
+
+    CategoriaFiscal categoriaFiscal
 
 ) {}

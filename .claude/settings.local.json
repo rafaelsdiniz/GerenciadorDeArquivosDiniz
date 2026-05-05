@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(./mvnw -q -DskipTests compile)",
+      "Bash(npx tsc *)",
+      "Bash(mvn compile *)",
+      "Bash(mvn clean *)",
+      "Bash(mvn test-compile *)",
+      "Bash(pnpm exec *)",
+      "Bash(./mvnw compile *)",
+      "Bash(./mvnw clean *)",
+      "Bash(./mvnw -DskipTests compile)",
+      "Bash(./mvnw -DskipTests clean compile)",
+      "Bash(./mvnw -DskipTests -Dmaven.compiler.useIncrementalCompilation=false compile)"
+    ]
+  }
+}

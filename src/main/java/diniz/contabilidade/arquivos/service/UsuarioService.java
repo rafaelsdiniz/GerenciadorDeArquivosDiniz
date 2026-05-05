@@ -9,6 +9,7 @@ import diniz.contabilidade.arquivos.model.entity.Usuario;
 import diniz.contabilidade.arquivos.model.valueObject.Email;
 import diniz.contabilidade.arquivos.repository.EmpresaRepository;
 import diniz.contabilidade.arquivos.repository.UsuarioRepository;
+import io.quarkus.elytron.security.common.BcryptUtil;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
@@ -58,7 +59,7 @@ public class UsuarioService {
 
         usuario.setNome(dto.nome());
         usuario.setEmail(new Email(dto.email()));
-        usuario.setSenha(dto.senha()); 
+        usuario.setSenha(BcryptUtil.bcryptHash(dto.senha()));
         usuario.setPerfilUsuario(dto.perfilUsuario());
         usuario.setEmpresa(empresa);
 
@@ -78,7 +79,9 @@ public class UsuarioService {
 
         usuario.setNome(dto.nome());
         usuario.setEmail(new Email(dto.email()));
-        usuario.setSenha(dto.senha());
+        if (dto.senha() != null && !dto.senha().isBlank()) {
+            usuario.setSenha(BcryptUtil.bcryptHash(dto.senha()));
+        }
         usuario.setPerfilUsuario(dto.perfilUsuario());
         usuario.setEmpresa(empresa);
 

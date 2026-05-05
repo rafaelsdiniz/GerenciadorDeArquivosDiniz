@@ -1,11 +1,13 @@
 package diniz.contabilidade.arquivos.model.valueObject;
 
+import jakarta.persistence.Column;
 import jakarta.persistence.Embeddable;
 import java.util.Objects;
 
 @Embeddable
 public class Cpf {
 
+    @Column(name = "cpf", nullable = false, unique = true)
     private String numero;
 
     public Cpf() {}
@@ -13,8 +15,8 @@ public class Cpf {
     public Cpf(String numero) {
         numero = numero.replaceAll("\\D", "");
 
-        if (numero.length() != 11) {
-            throw new IllegalArgumentException("CPF inválido.");
+        if (numero.length() != 11 || numero.matches("(\\d)\\1{10}")) {
+            throw new IllegalArgumentException("CPF inválido: " + numero);
         }
 
         this.numero = numero;
@@ -22,6 +24,10 @@ public class Cpf {
 
     public String getNumero() {
         return numero;
+    }
+
+    public static Cpf of(String numero) {
+        return new Cpf(numero);
     }
 
     @Override

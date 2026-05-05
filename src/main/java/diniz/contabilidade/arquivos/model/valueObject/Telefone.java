@@ -1,15 +1,16 @@
 package diniz.contabilidade.arquivos.model.valueObject;
 
+import jakarta.persistence.Column;
 import jakarta.persistence.Embeddable;
 import java.util.Objects;
 
 @Embeddable
 public class Telefone {
 
+    @Column(name = "telefone", nullable = false)
     private String numero;
 
-    public Telefone() {
-    }
+    public Telefone() {}
 
     public Telefone(String numero) {
 
@@ -19,8 +20,9 @@ public class Telefone {
 
         String telefoneLimpo = numero.replaceAll("\\D", "");
 
-        if (telefoneLimpo.length() < 10 || telefoneLimpo.length() > 11) {
-            throw new IllegalArgumentException("Telefone inválido.");
+        if (telefoneLimpo.length() < 10 || telefoneLimpo.length() > 11 ||
+            telefoneLimpo.matches("(\\d)\\1{9,10}")) {
+            throw new IllegalArgumentException("Telefone inválido: " + numero);
         }
 
         this.numero = telefoneLimpo;
@@ -28,6 +30,21 @@ public class Telefone {
 
     public String getNumero() {
         return numero;
+    }
+
+    public String getFormatado() {
+        if (numero.length() == 11) {
+            return "(" + numero.substring(0, 2) + ") " +
+                   numero.substring(2, 7) + "-" +
+                   numero.substring(7);
+        }
+        return "(" + numero.substring(0, 2) + ") " +
+               numero.substring(2, 6) + "-" +
+               numero.substring(6);
+    }
+
+    public static Telefone of(String numero) {
+        return new Telefone(numero);
     }
 
     @Override

@@ -6,7 +6,10 @@ import java.util.Set;
 import diniz.contabilidade.arquivos.dto.request.LoginRequestDTO;
 import diniz.contabilidade.arquivos.dto.response.TokenResponseDTO;
 import diniz.contabilidade.arquivos.model.entity.Usuario;
+import diniz.contabilidade.arquivos.model.enums.AcaoLog;
 import diniz.contabilidade.arquivos.repository.UsuarioRepository;
+import diniz.contabilidade.arquivos.service.LogAcessoService;
+import io.quarkus.elytron.security.common.BcryptUtil;
 import io.smallrye.jwt.build.Jwt;
 import jakarta.inject.Inject;
 import jakarta.validation.Valid;
@@ -26,6 +29,9 @@ public class AuthResource {
     @Inject
     UsuarioRepository usuarioRepository;
 
+    @Inject
+    LogAcessoService logService;
+
     @POST
     @Path("/login")
     public Response login(@Valid LoginRequestDTO dto) {
@@ -33,7 +39,7 @@ public class AuthResource {
         Usuario usuario = usuarioRepository.buscarPorEmail(dto.email())
                 .orElseThrow(() -> new NotAuthorizedException("Email ou senha inválidos."));
 
-        if (!usuario.getSenha().equals(dto.senha())) {
+        if (!BcryptUtil.matches(dto.senha(), usuario.getSenha())) {
             throw new NotAuthorizedException("Email ou senha inválidos.");
         }
 
@@ -44,6 +50,8 @@ public class AuthResource {
                 .claim("empresaId", usuario.getEmpresa().getId())
                 .expiresIn(Duration.ofHours(8))
                 .sign();
+
+        logService.registrarComUsuario(usuario, AcaoLog.LOGIN, "Usuario", usuario.getId(), "Login efetuado");
 
         return Response.ok(new TokenResponseDTO(token)).build();
     }

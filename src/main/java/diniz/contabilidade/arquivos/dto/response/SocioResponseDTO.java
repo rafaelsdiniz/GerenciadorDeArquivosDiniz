@@ -5,6 +5,8 @@ public record SocioResponseDTO(
     Long id,
     String nome,
     String cpf,
-    Long idEmpresa
+    Long idEmpresa,
+    Double participacao,
+    Boolean administrador
 
 ) {}

@@ -2,6 +2,7 @@ package diniz.contabilidade.arquivos.dto.request;
 
 
 import diniz.contabilidade.arquivos.model.enums.PerfilUsuario;
+import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
@@ -12,6 +13,7 @@ public record UsuarioRequestDTO(
     String nome,
 
     @NotBlank(message = "O email do usuário é obrigatório.")
+    @Email(message = "O email informado é inválido.")
     String email,
 
     @NotBlank(message = "A senha do usuário é obrigatória.")
