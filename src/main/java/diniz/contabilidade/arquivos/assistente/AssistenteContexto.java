@@ -27,7 +27,7 @@ import diniz.contabilidade.arquivos.model.enums.StatusObrigacao;
 public class AssistenteContexto {
 
     /** Limite do texto enviado à IA. */
-    public static final int LIMITE_TEXTO = 8000;
+    public static final int LIMITE_TEXTO = 24000;
 
     private static final DateTimeFormatter BR = DateTimeFormatter.ofPattern("dd/MM/yyyy");
     private static final Locale PT = Locale.forLanguageTag("pt-BR");
@@ -316,7 +316,7 @@ public class AssistenteContexto {
 
         t.secao("CERTIDÕES VENCENDO (≤ 15 dias) OU VENCIDAS (" + certidoesAlerta.size() + ")");
         if (certidoesAlerta.isEmpty()) t.linha("- nenhuma");
-        certidoesAlerta.stream().limit(10).forEach(c -> t.linha("- " + c.tipoRotulo() + " | validade " + data(c.dataValidade())
+        certidoesAlerta.stream().limit(escritorio ? 25 : 15).forEach(c -> t.linha("- " + c.tipoRotulo() + " | validade " + data(c.dataValidade())
                 + " (" + relativo(c.diasParaVencer()) + ") | " + ("VENCIDA".equals(c.statusValidade()) ? "VENCIDA" : "vencendo")
                 + (escritorio ? " | empresa: " + c.nomeEmpresa() : "")));
 
