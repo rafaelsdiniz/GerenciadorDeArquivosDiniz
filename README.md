@@ -13,9 +13,9 @@ Contribuinte (DEC), com a contagem da ciência tácita.
 | | |
 |---|---|
 | **Sistema** | https://gerenciador-diniz.vercel.app |
-| **API** | https://gerenciador-diniz-api.onrender.com (documentação: `/q/swagger-ui`) |
+| **API** | https://gerenciador-diniz-api-408278380894.southamerica-east1.run.app (documentação: `/q/swagger-ui`) |
 
-A API usa o plano gratuito do Render, que "dorme" após 15 minutos sem uso: **o primeiro acesso pode levar até 1 minuto**.
+A API roda no Google Cloud Run (São Paulo), que desliga quando ninguém usa: **o primeiro acesso pode levar alguns segundos**.
 
 **Logins de demonstração** (senha `123456` para todos):
 
@@ -65,7 +65,7 @@ prazo legal. Hoje isso circula por WhatsApp, e-mail e planilhas: prazos se perde
  Navegador ──▶ Front-end Angular 20 (Vercel)
                     │  REST + JWT
                     ▼
-              API Quarkus 3 / Java 21 (Render, Docker) ──▶ PostgreSQL (Neon)
+              API Quarkus 3 / Java 21 (Google Cloud Run, Docker) ──▶ PostgreSQL (Neon)
                     │  REST somente leitura, chave por escritório
                     ▼
               DEC Monitor (Next.js) ──▶ SEFAZ-TO (Domicílio Eletrônico do Contribuinte)
@@ -133,8 +133,9 @@ Testes automatizados:
 
 ## Publicação (gratuita)
 
-- **API**: Render, a partir do `Dockerfile` (build Maven + JRE 21). O `render.yaml` cria o serviço;
-  as chaves do JWT são geradas na imagem e nunca ficam no repositório.
+- **API**: Google Cloud Run (`southamerica-east1`, mesma região do banco), a partir do `Dockerfile`
+  (build Maven + JRE 21): `gcloud run deploy --source .`. As chaves do JWT são geradas na imagem e nunca
+  ficam no repositório. O `render.yaml` continua disponível como alternativa.
   Na 1ª publicação use `DB_GENERATION=drop-and-create` (cria as tabelas e carrega a demonstração);
   depois troque para `update`.
 - **Front-end**: Vercel.
