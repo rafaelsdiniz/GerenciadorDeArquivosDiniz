@@ -25,5 +25,7 @@ public record ObrigacaoPendenteResponseDTO(
     /** Data do pagamento da guia (null = não paga). */
     LocalDate dataPagamento,
     /** NAO_SE_APLICA (documentos do cliente / não entregue) | AGUARDANDO | ATRASADO | PAGO */
-    String situacaoPagamento
+    String situacaoPagamento,
+    /** Valor da guia mais recente lida pela leitura inteligente (null = sem guia lida). */
+    java.math.BigDecimal valorGuia
 ) {}

@@ -229,7 +229,14 @@ public class ObrigacaoPendenteService {
                 + "where a.obrigacaoPendente is not null and a.excluidoEm is null group by a.obrigacaoPendente.id",
                 Object[].class).getResultList();
         for (Object[] l : linhas) anexos.put((Long) l[0], (Long) l[1]);
-        return lista.stream().map(p -> toResponseDTO(p, anexos.getOrDefault(p.getId(), 0L))).toList();
+        // valor da guia: o do arquivo lido mais recente de cada obrigação (uma consulta para a lista toda)
+        java.util.Map<Long, java.math.BigDecimal> valores = new java.util.HashMap<>();
+        List<Object[]> guias = arquivoRepository.getEntityManager().createQuery(
+                "select a.obrigacaoPendente.id, a.valor from Arquivo a "
+                + "where a.obrigacaoPendente is not null and a.excluidoEm is null and a.valor is not null order by a.id",
+                Object[].class).getResultList();
+        for (Object[] g : guias) valores.put((Long) g[0], (java.math.BigDecimal) g[1]);
+        return lista.stream().map(p -> toResponseDTO(p, anexos.getOrDefault(p.getId(), 0L), valores.get(p.getId()))).toList();
     }
 
     private ObrigacaoPendenteResponseDTO toResponseDTO(ObrigacaoPendente p) {
@@ -237,6 +244,13 @@ public class ObrigacaoPendenteService {
     }
 
     private ObrigacaoPendenteResponseDTO toResponseDTO(ObrigacaoPendente p, long totalArquivos) {
+        List<java.math.BigDecimal> v = arquivoRepository.getEntityManager().createQuery(
+                "select a.valor from Arquivo a where a.obrigacaoPendente = :p and a.excluidoEm is null and a.valor is not null order by a.id desc",
+                java.math.BigDecimal.class).setParameter("p", p).setMaxResults(1).getResultList();
+        return toResponseDTO(p, totalArquivos, v.isEmpty() ? null : v.get(0));
+    }
+
+    private ObrigacaoPendenteResponseDTO toResponseDTO(ObrigacaoPendente p, long totalArquivos, java.math.BigDecimal valorGuia) {
         Long diasParaVencer = null;
         if (p.getDataVencimento() != null) {
             diasParaVencer = ChronoUnit.DAYS.between(LocalDate.now(), p.getDataVencimento());
@@ -256,7 +270,8 @@ public class ObrigacaoPendenteService {
                 p.getObrigacaoRecorrente() != null ? p.getObrigacaoRecorrente().getResponsavel() : ResponsavelObrigacao.ESCRITORIO,
                 totalArquivos,
                 p.getDataPagamento(),
-                situacaoPagamento(p)
+                situacaoPagamento(p),
+                valorGuia
         );
     }
 

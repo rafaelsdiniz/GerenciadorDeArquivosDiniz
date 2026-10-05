@@ -34,6 +34,9 @@ public class CalendarioService {
     @Inject
     ComunicacaoDecRepository comunicacaoDecRepository;
 
+    @Inject
+    diniz.contabilidade.arquivos.repository.CertidaoRepository certidaoRepository;
+
     public List<EventoCalendarioDTO> eventosDoMes(Long idEmpresa, int ano, int mes) {
         Empresa empresa = empresaRepository.findByIdOptional(idEmpresa)
                 .orElseThrow(() -> new NotFoundException("Empresa não encontrada."));
@@ -87,6 +90,13 @@ public class CalendarioService {
                 eventos.add(new EventoCalendarioDTO(c.getPrazoRespostaEm(), "DEC", c.getId(),
                         "Prazo de resposta: " + c.getAssunto(), c.getMotivo(), "PRAZO_RESPOSTA", c.getUrgencia()));
             }
+        }
+
+        // validade das certidões negativas (status = VALIDA | VENCENDO | VENCIDA)
+        for (diniz.contabilidade.arquivos.model.entity.Certidao c : certidaoRepository.buscarComValidadeEntre(idEmpresa, inicio, fim)) {
+            eventos.add(new EventoCalendarioDTO(c.getDataValidade(), "CERTIDAO", c.getId(),
+                    "Validade: " + c.getTipo().getRotulo(), c.getNumero() != null ? "Nº " + c.getNumero() : c.getOrgaoEmissor(),
+                    CertidaoService.statusValidade(c.getDataValidade()), c.getTipo().name()));
         }
 
         eventos.sort(Comparator.comparing(EventoCalendarioDTO::data));

@@ -52,6 +52,9 @@ public class ArquivoService {
     @Inject
     LogAcessoService logService;
 
+    @Inject
+    diniz.contabilidade.arquivos.service.ia.LeitorDocumentoService leitorDocumento;
+
     public List<ArquivoResponseDTO> listar() {
         return arquivoRepository.listarAtivos()
                 .stream()
@@ -186,6 +189,11 @@ public class ArquivoService {
 
         arquivoRepository.persist(arquivo);
 
+        // guia anexada a uma obrigação: leitura inteligente em segundo plano após o commit (valor, linha digitável...)
+        if (vinculadoAObrigacao && arquivoBase64 != null) {
+            leitorDocumento.agendarAposCommit(arquivo.getId());
+        }
+
         logService.registrar(AcaoLog.UPLOAD, ENTIDADE, arquivo.getId(),
                 "Upload de \"" + nomeOriginal + "\" (empresa " + empresa.getId() + ")");
 
@@ -297,7 +305,17 @@ public class ArquivoService {
                 arquivo.getPasta().getId(),
                 arquivo.getObrigacaoPendente() != null ? arquivo.getObrigacaoPendente().getId() : null,
                 arquivo.getDataCriacao(),
-                arquivo.getUsuario() != null ? arquivo.getUsuario().getNome() : null
+                arquivo.getUsuario() != null ? arquivo.getUsuario().getNome() : null,
+                arquivo.getValor(),
+                arquivo.getLinhaDigitavel(),
+                arquivo.getCompetenciaDocumento(),
+                arquivo.getCnpjDocumento(),
+                arquivo.getTipoDocumento(),
+                arquivo.getFonteLeitura(),
+                arquivo.getAlertasLeitura() == null || arquivo.getAlertasLeitura().isBlank() ? List.of()
+                        : List.of(arquivo.getAlertasLeitura().split("\n")),
+                arquivo.getAnalisadoEm(),
+                arquivo.getArquivoBase64() != null
         );
     }
 

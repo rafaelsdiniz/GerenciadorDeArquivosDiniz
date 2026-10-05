@@ -51,6 +51,12 @@ prazo legal. Hoje isso circula por WhatsApp, e-mail e planilhas: prazos se perde
 | **Notificações** | Ambos | Sino com o que vence em 7 dias e o que está atrasado |
 | **Empresas, sócios, usuários** | Escritório | Cadastro da carteira, quadro societário e acessos |
 | **Auditoria** | Escritório | Registro de cada ação (quem, o quê, quando), com exportação CSV |
+| **Leitura inteligente de guias (IA)** | Ambos | Lê o PDF da guia/documento e extrai valor, vencimento, CNPJ, competência e linha digitável; sugere a obrigação certa |
+| **Assistente virtual (chatbot)** | Ambos | Responde em linguagem natural sobre prazos, guias, certidões e DEC, só com os dados que o usuário pode ver |
+| **Certidões negativas** | Ambos | Validade de CND Federal, Estadual, Municipal, FGTS, Trabalhista e Falência, com aviso 15 dias antes |
+| **Fechamento mensal** | Escritório | Quadro por competência (aguardando documentos → apuração → guias → concluído) com responsável e prazo interno |
+| **Mensagens na obrigação** | Ambos | Conversa entre escritório e cliente dentro de cada obrigação, com aviso no sino |
+| **Relatórios** | Ambos | Relatório mensal da empresa, da carteira e de pendências — impressão/PDF e CSV |
 | **Minha conta** | Ambos | Perfil e troca de senha |
 
 ## Arquitetura
@@ -72,6 +78,10 @@ prazo legal. Hoje isso circula por WhatsApp, e-mail e planilhas: prazos se perde
   mensal de pendências e sincronização com o DEC a cada 10 minutos.
 - **Integração DEC**: a API lê `GET /api/integracao/comunicacoes` do DEC Monitor e grava por *upsert*;
   as comunicações são ligadas à empresa pelo CNPJ. Somente leitura: nada é alterado no DEC.
+- **Inteligência artificial** (`service/ia`, `assistente`): o texto do PDF é extraído com PDFBox e lido por
+  padrões (valor, datas, CNPJ, código de barras com validação dos dígitos). Com `DEEPSEEK_API_KEY` configurada,
+  a leitura e o assistente usam o modelo DeepSeek; sem a chave, tudo continua funcionando no modo local.
+  O assistente recebe somente o contexto da empresa do usuário (mesmo isolamento da API) e tem limite de uso.
 
 ## Rodando localmente
 
@@ -120,12 +130,14 @@ Testes automatizados:
 | `JWT_PRIVATE_KEY_LOCATION`, `JWT_PUBLIC_KEY_LOCATION` | Chaves do JWT | chaves de desenvolvimento |
 | `DEC_URL`, `DEC_TOKEN` | Integração com o DEC Monitor | desligada |
 | `DEC_DEMO` | Comunicações fictícias (demonstração) | `false` |
+| `DEEPSEEK_API_KEY` | IA na leitura de guias e no assistente (opcional) | modo local |
 
 ## Publicação (gratuita)
 
 - **API**: Render, a partir do `Dockerfile` (build Maven + JRE 21). O `render.yaml` cria o serviço;
   as chaves do JWT são geradas na imagem e nunca ficam no repositório.
-  Na 1ª publicação use `DB_GENERATION=drop-and-create` e `DB_SEED=import.sql`; depois `update` e `no-file`.
+  Na 1ª publicação use `DB_GENERATION=drop-and-create` e
+  `DB_SEED=import.sql,seed-certidoes.sql,seed-fechamento.sql,seed-mensagens.sql`; depois `update` e `no-file`.
 - **Front-end**: Vercel.
 - **Banco**: Neon (PostgreSQL gratuito).
 
@@ -137,11 +149,14 @@ src/main/java/diniz/contabilidade/arquivos/
   dto/          contratos da API (request/response)
   repository/   acesso a dados (Panache)
   service/      regras de negócio, agendamentos e integração DEC
+  service/ia/   leitura inteligente de documentos (PDFBox + padrões + DeepSeek)
+  assistente/   assistente virtual (chatbot)
   resource/     endpoints REST
   security/     usuário logado e isolamento por empresa
 src/main/resources/
   application.properties   configuração (perfis dev/test/prod)
-  import.sql               dados de demonstração
+  import.sql, seed-*.sql   dados de demonstração
+  exemplos/                guias fictícias para testar a leitura por IA
 ```
 
 ## Créditos e referências

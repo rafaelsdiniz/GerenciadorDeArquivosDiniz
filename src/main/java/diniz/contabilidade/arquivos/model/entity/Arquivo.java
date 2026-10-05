@@ -181,4 +181,58 @@ public class Arquivo extends DefaultEntity{
     public void setExcluidoEm(LocalDateTime excluidoEm) {
         this.excluidoEm = excluidoEm;
     }
+
+    // ---------------------------------------------------------------- leitura inteligente (IA)
+
+    /** Valor do documento (ex.: total da guia) lido pela leitura inteligente. */
+    @jakarta.persistence.Column(precision = 15, scale = 2)
+    private java.math.BigDecimal valor;
+
+    /** Linha digitável (só dígitos). */
+    @jakarta.persistence.Column(length = 60)
+    private String linhaDigitavel;
+
+    /** Competência lida do documento ("MM/aaaa"). */
+    @jakarta.persistence.Column(length = 7)
+    private String competenciaDocumento;
+
+    /** CNPJ encontrado no documento (14 dígitos). */
+    @jakarta.persistence.Column(length = 14)
+    private String cnpjDocumento;
+
+    @Enumerated(EnumType.STRING)
+    private diniz.contabilidade.arquivos.model.enums.TipoDocumento tipoDocumento;
+
+    /** Resultado completo da leitura (JSON). */
+    @jakarta.persistence.Column(columnDefinition = "TEXT")
+    private String dadosIaJson;
+
+    /** "IA" ou "PADROES". */
+    @jakarta.persistence.Column(length = 10)
+    private String fonteLeitura;
+
+    /** Alertas da leitura (um por linha). */
+    @jakarta.persistence.Column(length = 2000)
+    private String alertasLeitura;
+
+    private LocalDateTime analisadoEm;
+
+    public java.math.BigDecimal getValor() { return valor; }
+    public void setValor(java.math.BigDecimal valor) { this.valor = valor; }
+    public String getLinhaDigitavel() { return linhaDigitavel; }
+    public void setLinhaDigitavel(String linhaDigitavel) { this.linhaDigitavel = linhaDigitavel; }
+    public String getCompetenciaDocumento() { return competenciaDocumento; }
+    public void setCompetenciaDocumento(String competenciaDocumento) { this.competenciaDocumento = competenciaDocumento; }
+    public String getCnpjDocumento() { return cnpjDocumento; }
+    public void setCnpjDocumento(String cnpjDocumento) { this.cnpjDocumento = cnpjDocumento; }
+    public diniz.contabilidade.arquivos.model.enums.TipoDocumento getTipoDocumento() { return tipoDocumento; }
+    public void setTipoDocumento(diniz.contabilidade.arquivos.model.enums.TipoDocumento tipoDocumento) { this.tipoDocumento = tipoDocumento; }
+    public String getDadosIaJson() { return dadosIaJson; }
+    public void setDadosIaJson(String dadosIaJson) { this.dadosIaJson = dadosIaJson; }
+    public String getFonteLeitura() { return fonteLeitura; }
+    public void setFonteLeitura(String fonteLeitura) { this.fonteLeitura = fonteLeitura; }
+    public String getAlertasLeitura() { return alertasLeitura; }
+    public void setAlertasLeitura(String alertasLeitura) { this.alertasLeitura = alertasLeitura; }
+    public LocalDateTime getAnalisadoEm() { return analisadoEm; }
+    public void setAnalisadoEm(LocalDateTime analisadoEm) { this.analisadoEm = analisadoEm; }
 }
