@@ -37,7 +37,7 @@ public class ObrigacaoPendenteService {
     ArquivoRepository arquivoRepository;
 
     public List<ObrigacaoPendenteResponseDTO> listar() {
-        return repository.listAll().stream().map(this::toResponseDTO).toList();
+        return comAnexos(repository.listAll());
     }
 
     public ObrigacaoPendenteResponseDTO buscarPorId(Long id) {
@@ -47,21 +47,21 @@ public class ObrigacaoPendenteService {
     public List<ObrigacaoPendenteResponseDTO> buscarPorEmpresa(Long idEmpresa) {
         Empresa empresa = empresaRepository.findByIdOptional(idEmpresa)
                 .orElseThrow(() -> new NotFoundException("Empresa não encontrada."));
-        return repository.buscarPorEmpresa(empresa).stream().map(this::toResponseDTO).toList();
+        return comAnexos(repository.buscarPorEmpresa(empresa));
     }
 
     public List<ObrigacaoPendenteResponseDTO> buscarPendentesPorEmpresa(Long idEmpresa) {
         Empresa empresa = empresaRepository.findByIdOptional(idEmpresa)
                 .orElseThrow(() -> new NotFoundException("Empresa não encontrada."));
-        return repository.buscarPendentesPorEmpresa(empresa).stream().map(this::toResponseDTO).toList();
+        return comAnexos(repository.buscarPendentesPorEmpresa(empresa));
     }
 
     public List<ObrigacaoPendenteResponseDTO> buscarVencidas() {
-        return repository.buscarVencidas().stream().map(this::toResponseDTO).toList();
+        return comAnexos(repository.buscarVencidas());
     }
 
     public List<ObrigacaoPendenteResponseDTO> buscarVencendoEm(int dias) {
-        return repository.buscarVencendoEm(dias).stream().map(this::toResponseDTO).toList();
+        return comAnexos(repository.buscarVencendoEm(dias));
     }
 
     @Transactional
@@ -95,6 +95,9 @@ public class ObrigacaoPendenteService {
         if (responsavel(p) != ResponsavelObrigacao.ESCRITORIO) {
             throw new IllegalArgumentException("Esta obrigação é de envio de documentos pelo cliente; não tem guia para pagar.");
         }
+        if (!geraGuia(p)) {
+            throw new IllegalArgumentException("Esta obrigação é uma declaração/entrega acessória; não tem guia para pagar.");
+        }
         LocalDate pagamento = data != null ? data : LocalDate.now();
         if (pagamento.isAfter(LocalDate.now())) {
             throw new IllegalArgumentException("A data de pagamento não pode ser no futuro.");
@@ -115,8 +118,18 @@ public class ObrigacaoPendenteService {
         return p.getObrigacaoRecorrente() != null ? p.getObrigacaoRecorrente().getResponsavel() : ResponsavelObrigacao.ESCRITORIO;
     }
 
+    /** Declarações e entregas acessórias (balancete, DEFIS, DCTF, SPED...) não geram guia de pagamento. */
+    private static final java.util.regex.Pattern SEM_GUIA = java.util.regex.Pattern.compile(
+            "balancete|defis|dctf|declara|sped|efd|dirf|rais|livro|dief|caged|esocial",
+            java.util.regex.Pattern.CASE_INSENSITIVE);
+
+    private boolean geraGuia(ObrigacaoPendente p) {
+        String nome = p.getObrigacaoRecorrente() != null ? p.getObrigacaoRecorrente().getNome() : null;
+        return nome == null || !SEM_GUIA.matcher(nome).find();
+    }
+
     private String situacaoPagamento(ObrigacaoPendente p) {
-        if (p.getStatus() != StatusObrigacao.ENTREGUE || responsavel(p) != ResponsavelObrigacao.ESCRITORIO) return "NAO_SE_APLICA";
+        if (p.getStatus() != StatusObrigacao.ENTREGUE || responsavel(p) != ResponsavelObrigacao.ESCRITORIO || !geraGuia(p)) return "NAO_SE_APLICA";
         if (p.getDataPagamento() != null) return "PAGO";
         boolean venceu = p.getDataVencimento() != null && p.getDataVencimento().isBefore(LocalDate.now());
         return venceu ? "ATRASADO" : "AGUARDANDO";
@@ -207,7 +220,23 @@ public class ObrigacaoPendenteService {
                 .orElseThrow(() -> new NotFoundException("Obrigação pendente não encontrada."));
     }
 
+    /** Converte uma lista contando os anexos de todas numa única consulta. */
+    private List<ObrigacaoPendenteResponseDTO> comAnexos(List<ObrigacaoPendente> lista) {
+        if (lista.isEmpty()) return List.of();
+        java.util.Map<Long, Long> anexos = new java.util.HashMap<>();
+        List<Object[]> linhas = arquivoRepository.getEntityManager().createQuery(
+                "select a.obrigacaoPendente.id, count(a) from Arquivo a "
+                + "where a.obrigacaoPendente is not null and a.excluidoEm is null group by a.obrigacaoPendente.id",
+                Object[].class).getResultList();
+        for (Object[] l : linhas) anexos.put((Long) l[0], (Long) l[1]);
+        return lista.stream().map(p -> toResponseDTO(p, anexos.getOrDefault(p.getId(), 0L))).toList();
+    }
+
     private ObrigacaoPendenteResponseDTO toResponseDTO(ObrigacaoPendente p) {
+        return toResponseDTO(p, arquivoRepository.count("obrigacaoPendente = ?1 and excluidoEm is null", p));
+    }
+
+    private ObrigacaoPendenteResponseDTO toResponseDTO(ObrigacaoPendente p, long totalArquivos) {
         Long diasParaVencer = null;
         if (p.getDataVencimento() != null) {
             diasParaVencer = ChronoUnit.DAYS.between(LocalDate.now(), p.getDataVencimento());
@@ -225,7 +254,7 @@ public class ObrigacaoPendenteService {
                 p.getEmpresa().getNomeFantasia(),
                 competencia(p),
                 p.getObrigacaoRecorrente() != null ? p.getObrigacaoRecorrente().getResponsavel() : ResponsavelObrigacao.ESCRITORIO,
-                arquivoRepository.count("obrigacaoPendente = ?1 and excluidoEm is null", p),
+                totalArquivos,
                 p.getDataPagamento(),
                 situacaoPagamento(p)
         );

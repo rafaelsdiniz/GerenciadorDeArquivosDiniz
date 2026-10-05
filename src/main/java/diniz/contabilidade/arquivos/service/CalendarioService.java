@@ -1,5 +1,7 @@
 package diniz.contabilidade.arquivos.service;
 
+import diniz.contabilidade.arquivos.model.entity.ComunicacaoDec;
+import diniz.contabilidade.arquivos.repository.ComunicacaoDecRepository;
 import java.time.LocalDate;
 import java.time.YearMonth;
 import java.util.ArrayList;
@@ -28,6 +30,9 @@ public class CalendarioService {
 
     @Inject
     ObrigacaoPendenteRepository obrigacaoPendenteRepository;
+
+    @Inject
+    ComunicacaoDecRepository comunicacaoDecRepository;
 
     public List<EventoCalendarioDTO> eventosDoMes(Long idEmpresa, int ano, int mes) {
         Empresa empresa = empresaRepository.findByIdOptional(idEmpresa)
@@ -69,7 +74,26 @@ public class CalendarioService {
             ));
         }
 
+        // prazos do DEC (SEFAZ-TO): ciência tácita das comunicações ainda sem ciência e prazo de resposta
+        for (ComunicacaoDec c : comunicacaoDecRepository.listarPorEmpresa(idEmpresa)) {
+            boolean aberta = c.getCienteEm() == null && !Boolean.TRUE.equals(c.getEncerrada())
+                    && !"RESOLVIDA".equals(c.getStatus()) && !"ARQUIVADA".equals(c.getStatus());
+            if (aberta && dentro(c.getCienciaTacitaEm(), inicio, fim)) {
+                eventos.add(new EventoCalendarioDTO(c.getCienciaTacitaEm(), "DEC", c.getId(),
+                        "Ciência tácita: " + c.getAssunto(), c.getMotivo(), "CIENCIA_TACITA", c.getUrgencia()));
+            }
+            boolean respondida = "RESOLVIDA".equals(c.getStatus()) || "ARQUIVADA".equals(c.getStatus());
+            if (!respondida && dentro(c.getPrazoRespostaEm(), inicio, fim)) {
+                eventos.add(new EventoCalendarioDTO(c.getPrazoRespostaEm(), "DEC", c.getId(),
+                        "Prazo de resposta: " + c.getAssunto(), c.getMotivo(), "PRAZO_RESPOSTA", c.getUrgencia()));
+            }
+        }
+
         eventos.sort(Comparator.comparing(EventoCalendarioDTO::data));
         return eventos;
+    }
+
+    private static boolean dentro(LocalDate d, LocalDate inicio, LocalDate fim) {
+        return d != null && !d.isBefore(inicio) && !d.isAfter(fim);
     }
 }

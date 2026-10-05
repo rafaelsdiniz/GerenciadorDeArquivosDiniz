@@ -535,3 +535,10 @@ UPDATE obrigacaopendente SET datapagamento = NULL
                ORDER BY p.datavencimento DESC LIMIT 5);
 UPDATE arquivo SET status = 'VENCIDO'  WHERE status = 'PENDENTE' AND datavencimento IS NOT NULL AND datavencimento < CURRENT_DATE;
 UPDATE arquivo SET status = 'PENDENTE' WHERE status = 'VENCIDO'  AND datavencimento IS NOT NULL AND datavencimento >= CURRENT_DATE;
+
+-- para a demonstração: 2 guias do mês já entregues pelo escritório e ainda no prazo (aguardando pagamento do cliente)
+UPDATE obrigacaopendente SET status = 'ENTREGUE', dataentrega = CURRENT_DATE, datapagamento = NULL
+ WHERE id IN (SELECT p.id FROM obrigacaopendente p JOIN obrigacaorecorrente r ON r.id = p.obrigacaorecorrente_id
+               WHERE p.status = 'PENDENTE' AND COALESCE(r.responsavel, 'ESCRITORIO') = 'ESCRITORIO'
+                 AND r.nome ~* '^(FGTS|DAS|INSS)' AND p.datavencimento >= CURRENT_DATE
+               ORDER BY p.datavencimento LIMIT 2);
