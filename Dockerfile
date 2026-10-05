@@ -23,7 +23,8 @@ COPY --from=build /app/target/quarkus-app/quarkus/ ./quarkus/
 
 ENV JWT_PRIVATE_KEY_LOCATION=/deployments/keys/privateKey.pem \
     JWT_PUBLIC_KEY_LOCATION=/deployments/keys/publicKey.pem \
-    JAVA_OPTS="-XX:MaxRAMPercentage=70 -XX:+UseSerialGC -Djava.util.logging.manager=org.jboss.logmanager.LogManager"
+    TZ=America/Araguaina \
+    JAVA_OPTS="-Duser.timezone=America/Araguaina -XX:MaxRAMPercentage=70 -XX:+UseSerialGC -Djava.util.logging.manager=org.jboss.logmanager.LogManager"
 
 EXPOSE 8080
 CMD ["sh", "-c", "java $JAVA_OPTS -jar quarkus-run.jar"]
