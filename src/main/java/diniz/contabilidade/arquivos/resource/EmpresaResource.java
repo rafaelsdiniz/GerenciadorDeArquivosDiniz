@@ -1,6 +1,8 @@
 package diniz.contabilidade.arquivos.resource;
 
 import diniz.contabilidade.arquivos.dto.request.EmpresaRequestDTO;
+import diniz.contabilidade.arquivos.dto.response.EmpresaResponseDTO;
+import diniz.contabilidade.arquivos.security.UsuarioLogado;
 import diniz.contabilidade.arquivos.service.EmpresaService;
 import jakarta.annotation.security.RolesAllowed;
 import jakarta.inject.Inject;
@@ -24,31 +26,38 @@ public class EmpresaResource {
     @Inject
     EmpresaService empresaService;
 
+    @Inject
+    UsuarioLogado usuario;
+
     @GET
     @RolesAllowed({"ADMIN", "FUNCIONARIO"})
     public Response listar() {
-        return Response.ok(empresaService.listar()).build();
+        return Response.ok(usuario.filtrar(empresaService.listar(), EmpresaResponseDTO::id)).build();
     }
 
     @GET
     @Path("/{id}")
     @RolesAllowed({"ADMIN", "FUNCIONARIO"})
     public Response buscarPorId(@PathParam("id") Long id) {
+        usuario.exigirEmpresa(id);
         return Response.ok(empresaService.buscarPorId(id)).build();
     }
 
+    /** Só o escritório cadastra novas empresas na carteira. */
     @POST
-    @RolesAllowed({"ADMIN", "FUNCIONARIO"})
+    @RolesAllowed({"ADMIN"})
     public Response salvar(@Valid EmpresaRequestDTO dto) {
         return Response.status(Response.Status.CREATED)
                 .entity(empresaService.salvar(dto))
                 .build();
     }
 
+    /** O cliente pode atualizar os dados cadastrais da própria empresa. */
     @PUT
     @Path("/{id}")
     @RolesAllowed({"ADMIN", "FUNCIONARIO"})
     public Response atualizar(@PathParam("id") Long id, @Valid EmpresaRequestDTO dto) {
+        usuario.exigirEmpresa(id);
         return Response.ok(empresaService.atualizar(id, dto)).build();
     }
 

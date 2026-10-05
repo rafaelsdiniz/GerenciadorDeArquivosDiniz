@@ -55,6 +55,10 @@ public class UsuarioService {
         Empresa empresa = empresaRepository.findByIdOptional(dto.idEmpresa())
                 .orElseThrow(() -> new NotFoundException("Empresa não encontrada."));
 
+        if (dto.senha() == null || dto.senha().length() < 6) {
+            throw new IllegalArgumentException("A senha deve conter no mínimo 6 caracteres.");
+        }
+
         Usuario usuario = new Usuario();
 
         usuario.setNome(dto.nome());
@@ -80,11 +84,41 @@ public class UsuarioService {
         usuario.setNome(dto.nome());
         usuario.setEmail(new Email(dto.email()));
         if (dto.senha() != null && !dto.senha().isBlank()) {
+            if (dto.senha().length() < 6) {
+                throw new IllegalArgumentException("A senha deve conter no mínimo 6 caracteres.");
+            }
             usuario.setSenha(BcryptUtil.bcryptHash(dto.senha()));
         }
         usuario.setPerfilUsuario(dto.perfilUsuario());
         usuario.setEmpresa(empresa);
 
+        return toResponseDTO(usuario);
+    }
+
+    /** Troca de senha pelo próprio usuário (exige a senha atual). */
+    @Transactional
+    public void alterarSenha(Long idUsuario, String senhaAtual, String novaSenha) {
+        Usuario usuario = usuarioRepository.findByIdOptional(idUsuario)
+                .orElseThrow(() -> new NotFoundException("Usuário não encontrado."));
+
+        if (!BcryptUtil.matches(senhaAtual, usuario.getSenha())) {
+            throw new IllegalArgumentException("A senha atual está incorreta.");
+        }
+        if (senhaAtual.equals(novaSenha)) {
+            throw new IllegalArgumentException("A nova senha deve ser diferente da atual.");
+        }
+        usuario.setSenha(BcryptUtil.bcryptHash(novaSenha));
+    }
+
+    /** Atualiza só o nome de exibição do próprio usuário. */
+    @Transactional
+    public UsuarioResponseDTO atualizarMeuNome(Long idUsuario, String nome) {
+        if (nome == null || nome.isBlank()) {
+            throw new IllegalArgumentException("Informe o nome.");
+        }
+        Usuario usuario = usuarioRepository.findByIdOptional(idUsuario)
+                .orElseThrow(() -> new NotFoundException("Usuário não encontrado."));
+        usuario.setNome(nome.trim());
         return toResponseDTO(usuario);
     }
 
@@ -104,7 +138,8 @@ public class UsuarioService {
                 usuario.getNome(),
                 usuario.getEmail().getEndereco(),
                 usuario.getPerfilUsuario(),
-                usuario.getEmpresa().getId()
+                usuario.getEmpresa().getId(),
+                usuario.getDataCriacao()
         );
     }
 }

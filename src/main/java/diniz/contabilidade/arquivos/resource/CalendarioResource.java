@@ -2,6 +2,7 @@ package diniz.contabilidade.arquivos.resource;
 
 import java.time.LocalDate;
 
+import diniz.contabilidade.arquivos.security.UsuarioLogado;
 import diniz.contabilidade.arquivos.service.CalendarioService;
 import jakarta.annotation.security.RolesAllowed;
 import jakarta.inject.Inject;
@@ -21,6 +22,9 @@ public class CalendarioResource {
     @Inject
     CalendarioService service;
 
+    @Inject
+    UsuarioLogado usuario;
+
     @GET
     @Path("/empresa/{idEmpresa}")
     @RolesAllowed({"ADMIN", "FUNCIONARIO"})
@@ -28,6 +32,8 @@ public class CalendarioResource {
             @PathParam("idEmpresa") Long idEmpresa,
             @QueryParam("ano") @DefaultValue("0") int ano,
             @QueryParam("mes") @DefaultValue("0") int mes) {
+
+        usuario.exigirEmpresa(idEmpresa);
 
         LocalDate hoje = LocalDate.now();
         if (ano <= 0) ano = hoje.getYear();

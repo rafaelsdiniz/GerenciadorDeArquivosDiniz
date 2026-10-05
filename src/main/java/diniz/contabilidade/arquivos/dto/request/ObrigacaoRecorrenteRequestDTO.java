@@ -1,6 +1,7 @@
 package diniz.contabilidade.arquivos.dto.request;
 
 import diniz.contabilidade.arquivos.model.enums.Periodicidade;
+import diniz.contabilidade.arquivos.model.enums.ResponsavelObrigacao;
 import diniz.contabilidade.arquivos.model.enums.TipoArquivo;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
@@ -27,6 +28,7 @@ public record ObrigacaoRecorrenteRequestDTO(
 
     TipoArquivo tipoArquivoEsperado,
 
-    Boolean ativo
+    Boolean ativo,
 
+    ResponsavelObrigacao responsavel
 ) {}

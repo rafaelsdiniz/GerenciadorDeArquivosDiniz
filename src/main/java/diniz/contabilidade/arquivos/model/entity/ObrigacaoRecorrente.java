@@ -1,5 +1,6 @@
 package diniz.contabilidade.arquivos.model.entity;
 
+import diniz.contabilidade.arquivos.model.enums.ResponsavelObrigacao;
 import diniz.contabilidade.arquivos.model.enums.Periodicidade;
 import diniz.contabilidade.arquivos.model.enums.TipoArquivo;
 import jakarta.persistence.Entity;
@@ -23,6 +24,9 @@ public class ObrigacaoRecorrente extends DefaultEntity {
     private TipoArquivo tipoArquivoEsperado;
 
     private Boolean ativo;
+
+    @Enumerated(EnumType.STRING)
+    private ResponsavelObrigacao responsavel;
 
     @ManyToOne
     private Empresa empresa;
@@ -75,6 +79,15 @@ public class ObrigacaoRecorrente extends DefaultEntity {
 
     public void setAtivo(Boolean ativo) {
         this.ativo = ativo;
+    }
+
+    /** Nulo em dados antigos = ESCRITORIO. */
+    public ResponsavelObrigacao getResponsavel() {
+        return responsavel != null ? responsavel : ResponsavelObrigacao.ESCRITORIO;
+    }
+
+    public void setResponsavel(ResponsavelObrigacao responsavel) {
+        this.responsavel = responsavel;
     }
 
     public Empresa getEmpresa() {

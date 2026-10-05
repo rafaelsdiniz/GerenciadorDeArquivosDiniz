@@ -7,6 +7,7 @@ public record UsuarioResponseDTO(
     String nome,
     String email,
     PerfilUsuario perfilUsuario,
-    Long idEmpresa
+    Long idEmpresa,
+    java.time.LocalDateTime dataCriacao
 ) {
 }

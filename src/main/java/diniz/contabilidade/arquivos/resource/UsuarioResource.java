@@ -1,12 +1,17 @@
 package diniz.contabilidade.arquivos.resource;
 
+import java.util.Map;
+
+import diniz.contabilidade.arquivos.dto.request.AlterarSenhaRequestDTO;
 import diniz.contabilidade.arquivos.dto.request.UsuarioRequestDTO;
+import diniz.contabilidade.arquivos.security.UsuarioLogado;
 import diniz.contabilidade.arquivos.service.UsuarioService;
 import jakarta.annotation.security.RolesAllowed;
 import jakarta.inject.Inject;
 import jakarta.validation.Valid;
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.DELETE;
+import jakarta.ws.rs.NotAuthorizedException;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.POST;
 import jakarta.ws.rs.PUT;
@@ -23,6 +28,38 @@ public class UsuarioResource {
 
     @Inject
     UsuarioService usuarioService;
+
+    @Inject
+    UsuarioLogado logado;
+
+    private Long meuId() {
+        Long id = logado.usuarioId();
+        if (id == null) throw new NotAuthorizedException("Sessão inválida.");
+        return id;
+    }
+
+    /** Perfil do usuário logado (qualquer perfil). */
+    @GET
+    @Path("/me")
+    @RolesAllowed({"ADMIN", "FUNCIONARIO"})
+    public Response meuPerfil() {
+        return Response.ok(usuarioService.buscarPorId(meuId())).build();
+    }
+
+    @PUT
+    @Path("/me")
+    @RolesAllowed({"ADMIN", "FUNCIONARIO"})
+    public Response atualizarMeuPerfil(Map<String, String> corpo) {
+        return Response.ok(usuarioService.atualizarMeuNome(meuId(), corpo != null ? corpo.get("nome") : null)).build();
+    }
+
+    @PUT
+    @Path("/me/senha")
+    @RolesAllowed({"ADMIN", "FUNCIONARIO"})
+    public Response alterarMinhaSenha(@Valid AlterarSenhaRequestDTO dto) {
+        usuarioService.alterarSenha(meuId(), dto.senhaAtual(), dto.novaSenha());
+        return Response.noContent().build();
+    }
 
     @GET
     @RolesAllowed({"ADMIN"})

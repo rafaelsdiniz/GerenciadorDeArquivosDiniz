@@ -171,8 +171,10 @@ public class ArquivoService {
             }
 
             arquivo.setObrigacaoPendente(obrigacao);
-            obrigacao.setStatus(StatusObrigacao.ENTREGUE);
-            obrigacao.setDataEntrega(LocalDate.now());
+            if (obrigacao.getStatus() != StatusObrigacao.ENTREGUE) {
+                obrigacao.setStatus(StatusObrigacao.ENTREGUE);
+                obrigacao.setDataEntrega(LocalDate.now());
+            }
 
             if (arquivo.getDataVencimento() == null) {
                 arquivo.setDataVencimento(obrigacao.getDataVencimento());
@@ -293,7 +295,9 @@ public class ArquivoService {
                 arquivo.getEmpresa().getId(),
                 arquivo.getUsuario().getId(),
                 arquivo.getPasta().getId(),
-                arquivo.getObrigacaoPendente() != null ? arquivo.getObrigacaoPendente().getId() : null
+                arquivo.getObrigacaoPendente() != null ? arquivo.getObrigacaoPendente().getId() : null,
+                arquivo.getDataCriacao(),
+                arquivo.getUsuario() != null ? arquivo.getUsuario().getNome() : null
         );
     }
 

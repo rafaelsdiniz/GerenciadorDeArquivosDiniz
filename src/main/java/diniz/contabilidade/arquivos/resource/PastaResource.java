@@ -1,6 +1,8 @@
 package diniz.contabilidade.arquivos.resource;
 
 import diniz.contabilidade.arquivos.dto.request.PastaRequestDTO;
+import diniz.contabilidade.arquivos.dto.response.PastaResponseDTO;
+import diniz.contabilidade.arquivos.security.UsuarioLogado;
 import diniz.contabilidade.arquivos.service.PastaService;
 import jakarta.annotation.security.RolesAllowed;
 import jakarta.inject.Inject;
@@ -24,23 +26,31 @@ public class PastaResource {
     @Inject
     PastaService pastaService;
 
+    @Inject
+    UsuarioLogado usuario;
+
+    private PastaResponseDTO visivel(Long id) {
+        return usuario.verificar(pastaService.buscarPorId(id), PastaResponseDTO::idEmpresa);
+    }
+
     @GET
     @RolesAllowed({"ADMIN", "FUNCIONARIO"})
     public Response listar() {
-        return Response.ok(pastaService.listar()).build();
+        return Response.ok(usuario.filtrar(pastaService.listar(), PastaResponseDTO::idEmpresa)).build();
     }
 
     @GET
     @Path("/{id}")
     @RolesAllowed({"ADMIN", "FUNCIONARIO"})
     public Response buscarPorId(@PathParam("id") Long id) {
-        return Response.ok(pastaService.buscarPorId(id)).build();
+        return Response.ok(visivel(id)).build();
     }
 
     @GET
     @Path("/empresa/{idEmpresa}")
     @RolesAllowed({"ADMIN", "FUNCIONARIO"})
     public Response buscarPorEmpresa(@PathParam("idEmpresa") Long idEmpresa) {
+        usuario.exigirEmpresa(idEmpresa);
         return Response.ok(pastaService.buscarPorEmpresa(idEmpresa)).build();
     }
 
@@ -48,6 +58,7 @@ public class PastaResource {
     @Path("/empresa/{idEmpresa}/raiz")
     @RolesAllowed({"ADMIN", "FUNCIONARIO"})
     public Response buscarPastasRaiz(@PathParam("idEmpresa") Long idEmpresa) {
+        usuario.exigirEmpresa(idEmpresa);
         return Response.ok(pastaService.buscarPastasRaiz(idEmpresa)).build();
     }
 
@@ -55,12 +66,14 @@ public class PastaResource {
     @Path("/{idPastaPai}/subpastas")
     @RolesAllowed({"ADMIN", "FUNCIONARIO"})
     public Response buscarSubpastas(@PathParam("idPastaPai") Long idPastaPai) {
+        visivel(idPastaPai);
         return Response.ok(pastaService.buscarSubpastas(idPastaPai)).build();
     }
 
     @POST
     @RolesAllowed({"ADMIN", "FUNCIONARIO"})
     public Response salvar(@Valid PastaRequestDTO dto) {
+        usuario.exigirEmpresa(dto.idEmpresa());
         return Response.status(Response.Status.CREATED)
                 .entity(pastaService.salvar(dto))
                 .build();
@@ -70,6 +83,8 @@ public class PastaResource {
     @Path("/{id}")
     @RolesAllowed({"ADMIN", "FUNCIONARIO"})
     public Response atualizar(@PathParam("id") Long id, @Valid PastaRequestDTO dto) {
+        visivel(id);
+        usuario.exigirEmpresa(dto.idEmpresa());
         return Response.ok(pastaService.atualizar(id, dto)).build();
     }
 
@@ -77,6 +92,7 @@ public class PastaResource {
     @Path("/{id}")
     @RolesAllowed({"ADMIN", "FUNCIONARIO"})
     public Response deletar(@PathParam("id") Long id) {
+        visivel(id);
         pastaService.deletar(id);
         return Response.noContent().build();
     }

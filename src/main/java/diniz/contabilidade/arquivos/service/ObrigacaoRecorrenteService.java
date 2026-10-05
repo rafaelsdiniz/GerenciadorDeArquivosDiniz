@@ -1,5 +1,6 @@
 package diniz.contabilidade.arquivos.service;
 
+import diniz.contabilidade.arquivos.model.enums.ResponsavelObrigacao;
 import java.util.List;
 
 import diniz.contabilidade.arquivos.dto.request.ObrigacaoRecorrenteRequestDTO;
@@ -21,6 +22,9 @@ public class ObrigacaoRecorrenteService {
 
     @Inject
     EmpresaRepository empresaRepository;
+
+    @Inject
+    ObrigacaoPendenteService pendenteService;
 
     public List<ObrigacaoRecorrenteResponseDTO> listar() {
         return repository.listAll().stream().map(this::toResponseDTO).toList();
@@ -44,6 +48,10 @@ public class ObrigacaoRecorrenteService {
         ObrigacaoRecorrente entidade = new ObrigacaoRecorrente();
         aplicar(dto, entidade, empresa);
         repository.persist(entidade);
+        // já cria a próxima ocorrência, sem esperar o job do dia 1º
+        if (Boolean.TRUE.equals(entidade.getAtivo())) {
+            pendenteService.gerarProxima(entidade);
+        }
         return toResponseDTO(entidade);
     }
 
@@ -54,6 +62,9 @@ public class ObrigacaoRecorrenteService {
                 .orElseThrow(() -> new NotFoundException("Empresa não encontrada."));
 
         aplicar(dto, entidade, empresa);
+        if (Boolean.TRUE.equals(entidade.getAtivo())) {
+            pendenteService.gerarProxima(entidade);
+        }
         return toResponseDTO(entidade);
     }
 
@@ -75,6 +86,7 @@ public class ObrigacaoRecorrenteService {
         entidade.setDiaVencimento(dto.diaVencimento());
         entidade.setTipoArquivoEsperado(dto.tipoArquivoEsperado());
         entidade.setAtivo(dto.ativo() == null ? Boolean.TRUE : dto.ativo());
+        entidade.setResponsavel(dto.responsavel() == null ? ResponsavelObrigacao.ESCRITORIO : dto.responsavel());
     }
 
     private ObrigacaoRecorrenteResponseDTO toResponseDTO(ObrigacaoRecorrente o) {
@@ -86,7 +98,8 @@ public class ObrigacaoRecorrenteService {
                 o.getPeriodicidade(),
                 o.getDiaVencimento(),
                 o.getTipoArquivoEsperado(),
-                o.getAtivo()
+                o.getAtivo(),
+                o.getResponsavel()
         );
     }
 }

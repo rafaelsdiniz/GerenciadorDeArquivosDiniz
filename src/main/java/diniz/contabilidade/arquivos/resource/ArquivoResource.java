@@ -17,6 +17,7 @@ import diniz.contabilidade.arquivos.exception.ErroPayload;
 import diniz.contabilidade.arquivos.model.enums.CategoriaFiscal;
 import diniz.contabilidade.arquivos.model.enums.StatusArquivo;
 import diniz.contabilidade.arquivos.resource.form.ArquivoUploadForm;
+import diniz.contabilidade.arquivos.security.UsuarioLogado;
 import diniz.contabilidade.arquivos.service.ArquivoService;
 import jakarta.annotation.security.RolesAllowed;
 import jakarta.inject.Inject;
@@ -37,65 +38,84 @@ public class ArquivoResource {
     @Inject
     ArquivoService arquivoService;
 
+    @Inject
+    UsuarioLogado usuario;
+
+    private ArquivoResponseDTO visivel(Long id) {
+        return usuario.verificar(arquivoService.buscarPorId(id), ArquivoResponseDTO::idEmpresa);
+    }
+
     @GET
     @RolesAllowed({"ADMIN","FUNCIONARIO"})
     public Response listar() {
-        return Response.ok(arquivoService.listar()).build();
+        return Response.ok(usuario.filtrar(arquivoService.listar(), ArquivoResponseDTO::idEmpresa)).build();
     }
 
     @GET
     @Path("/{id}")
     @RolesAllowed({"ADMIN","FUNCIONARIO"})
     public Response buscarPorId(@PathParam("id") Long id) {
-        return Response.ok(arquivoService.buscarPorId(id)).build();
+        return Response.ok(visivel(id)).build();
     }
 
     @GET
     @Path("/empresa/{idEmpresa}")
     @RolesAllowed({"ADMIN","FUNCIONARIO"})
     public Response buscarPorEmpresa(@PathParam("idEmpresa") Long idEmpresa) {
+        usuario.exigirEmpresa(idEmpresa);
         return Response.ok(arquivoService.buscarPorEmpresa(idEmpresa)).build();
+    }
+
+    /** Arquivos vinculados a uma obrigação (guia, comprovante, declaração). */
+    @GET
+    @Path("/obrigacao/{idObrigacao}")
+    @RolesAllowed({"ADMIN","FUNCIONARIO"})
+    public Response buscarPorObrigacao(@PathParam("idObrigacao") Long idObrigacao) {
+        return Response.ok(usuario.filtrar(arquivoService.listar(), ArquivoResponseDTO::idEmpresa).stream()
+                .filter(a -> idObrigacao.equals(a.idObrigacaoPendente()))
+                .toList()).build();
     }
 
     @GET
     @Path("/vencendo")
     @RolesAllowed({"ADMIN","FUNCIONARIO"})
     public Response vencendoEm(@QueryParam("dias") @DefaultValue("7") int dias) {
-        return Response.ok(arquivoService.buscarVencendoEm(dias)).build();
+        return Response.ok(usuario.filtrar(arquivoService.buscarVencendoEm(dias), ArquivoResponseDTO::idEmpresa)).build();
     }
 
     @GET
     @Path("/vencidos")
     @RolesAllowed({"ADMIN","FUNCIONARIO"})
     public Response vencidos() {
-        return Response.ok(arquivoService.buscarVencidos()).build();
+        return Response.ok(usuario.filtrar(arquivoService.buscarVencidos(), ArquivoResponseDTO::idEmpresa)).build();
     }
 
     @GET
     @Path("/por-status")
     @RolesAllowed({"ADMIN","FUNCIONARIO"})
     public Response porStatus(@QueryParam("status") StatusArquivo status) {
-        return Response.ok(arquivoService.buscarPorStatus(status)).build();
+        return Response.ok(usuario.filtrar(arquivoService.buscarPorStatus(status), ArquivoResponseDTO::idEmpresa)).build();
     }
 
     @GET
     @Path("/por-categoria")
     @RolesAllowed({"ADMIN","FUNCIONARIO"})
     public Response porCategoria(@QueryParam("categoria") CategoriaFiscal categoria) {
-        return Response.ok(arquivoService.buscarPorCategoria(categoria)).build();
+        return Response.ok(usuario.filtrar(arquivoService.buscarPorCategoria(categoria), ArquivoResponseDTO::idEmpresa)).build();
     }
 
     @GET
     @Path("/lixeira")
     @RolesAllowed({"ADMIN","FUNCIONARIO"})
     public Response lixeira() {
-        return Response.ok(arquivoService.listarLixeira()).build();
+        return Response.ok(usuario.filtrar(arquivoService.listarLixeira(), ArquivoResponseDTO::idEmpresa)).build();
     }
 
     @PATCH
     @Path("/{id}/status")
     @RolesAllowed({"ADMIN","FUNCIONARIO"})
     public Response atualizarStatus(@PathParam("id") Long id, @QueryParam("status") StatusArquivo status) {
+        visivel(id);
         return Response.ok(arquivoService.atualizarStatus(id, status)).build();
     }
 
@@ -103,6 +123,7 @@ public class ArquivoResource {
     @Path("/{id}/vencimento")
     @RolesAllowed({"ADMIN","FUNCIONARIO"})
     public Response atualizarVencimento(@PathParam("id") Long id, @QueryParam("dataVencimento") LocalDate dataVencimento) {
+        visivel(id);
         return Response.ok(arquivoService.atualizarVencimento(id, dataVencimento)).build();
     }
 
@@ -110,6 +131,7 @@ public class ArquivoResource {
     @Path("/{id}/restaurar")
     @RolesAllowed({"ADMIN","FUNCIONARIO"})
     public Response restaurar(@PathParam("id") Long id) {
+        visivel(id);
         return Response.ok(arquivoService.restaurar(id)).build();
     }
 
@@ -117,6 +139,7 @@ public class ArquivoResource {
     @Path("/{id}/pasta")
     @RolesAllowed({"ADMIN","FUNCIONARIO"})
     public Response moverParaPasta(@PathParam("id") Long id, @QueryParam("idPasta") Long idPasta) {
+        visivel(id);
         return Response.ok(arquivoService.moverParaPasta(id, idPasta)).build();
     }
 
@@ -132,6 +155,9 @@ public class ArquivoResource {
         if (form.arquivo == null) {
             throw new ValidationException("Arquivo é obrigatório.");
         }
+
+        // funcionário só envia para a própria empresa; o autor é sempre quem está logado
+        usuario.exigirEmpresa(form.idEmpresa);
 
         try {
 
@@ -158,7 +184,7 @@ public class ArquivoResource {
 
             ArquivoRequestDTO dto = new ArquivoRequestDTO(
                     form.idEmpresa,
-                    form.idUsuario,
+                    usuario.usuarioId() != null ? usuario.usuarioId() : form.idUsuario,
                     form.idPasta,
                     form.descricao,
                     form.dataVencimento,
@@ -202,6 +228,7 @@ public class ArquivoResource {
     public Response download(@PathParam("id") Long id){
 
         Arquivo arquivo = arquivoService.buscarEntidadePorId(id);
+        usuario.exigirEmpresa(arquivo.getEmpresa().getId());
 
         if (arquivo.getArquivoBase64() == null) {
             throw new NotFoundException("Arquivo físico não encontrado (dado de teste sem conteúdo).");
@@ -222,6 +249,7 @@ public class ArquivoResource {
     @Path("/{id}")
     @RolesAllowed({"ADMIN","FUNCIONARIO"})
     public Response excluir(@PathParam("id") Long id){
+        visivel(id);
         arquivoService.excluir(id);
         return Response.noContent().build();
     }

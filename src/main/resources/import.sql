@@ -1,3 +1,13 @@
+------------------------------------------------
+-- DATAS RELATIVAS
+-- O seed foi escrito com 'hoje' em abril/2026. seed_dt/seed_ts deslocam as datas
+-- em meses inteiros até o mês atual, preservando o dia de vencimento (DAS dia 20,
+-- FGTS dia 7...). No fim do arquivo os status são recalculados conforme a data de hoje.
+------------------------------------------------
+CREATE OR REPLACE FUNCTION seed_dt(d DATE) RETURNS DATE LANGUAGE sql STABLE AS 'SELECT (d + ((EXTRACT(YEAR FROM CURRENT_DATE) * 12 + EXTRACT(MONTH FROM CURRENT_DATE) - 24316) * INTERVAL ''1 month''))::date';
+-- horários de eventos passados (ex.: exclusão) mantêm a distância em dias do 'hoje' original (22/04/2026)
+CREATE OR REPLACE FUNCTION seed_ts(t TIMESTAMP) RETURNS TIMESTAMP LANGUAGE sql STABLE AS 'SELECT t + (CURRENT_DATE - DATE ''2026-04-22'') * INTERVAL ''1 day''';
+
 BEGIN;
 
 ------------------------------------------------
@@ -211,75 +221,85 @@ INSERT INTO obrigacaorecorrente (datacriacao, dataatualizacao, nome, descricao, 
 (NOW(), NOW(), 'DAS — Simples Nacional', 'DAS Escola',                                   'MENSAL',     20, 'PDF',  TRUE,  10),  -- 24
 (NOW(), NOW(), 'ISS',                    'ISS Escola',                                   'MENSAL',     10, 'PDF',  TRUE,  10);  -- 25
 
+-- obrigações em que o CLIENTE precisa enviar documentos ao escritório (ids 26–31)
+INSERT INTO obrigacaorecorrente (datacriacao, dataatualizacao, nome, descricao, periodicidade, diavencimento, tipoarquivoesperado, ativo, empresa_id, responsavel) VALUES
+(NOW(), NOW(), 'Extrato bancário',          'Extratos de todas as contas do mês anterior',  'MENSAL', 5,  'PDF',   TRUE, 2, 'CLIENTE'),  -- 26
+(NOW(), NOW(), 'Notas fiscais de entrada',  'XML/PDF das compras do mês anterior',          'MENSAL', 5,  'XML',   TRUE, 2, 'CLIENTE'),  -- 27
+(NOW(), NOW(), 'Folha de ponto',            'Espelho de ponto para fechamento da folha',    'MENSAL', 25, 'PDF',   TRUE, 3, 'CLIENTE'),  -- 28
+(NOW(), NOW(), 'Extrato bancário',          'Extratos de todas as contas do mês anterior',  'MENSAL', 5,  'PDF',   TRUE, 3, 'CLIENTE'),  -- 29
+(NOW(), NOW(), 'Extrato bancário',          'Extratos de todas as contas do mês anterior',  'MENSAL', 5,  'PDF',   TRUE, 7, 'CLIENTE'),  -- 30
+(NOW(), NOW(), 'Notas fiscais de entrada',  'XML/PDF das compras do mês anterior',          'MENSAL', 5,  'XML',   TRUE, 8, 'CLIENTE');  -- 31
+
+
 ------------------------------------------------
 -- OBRIGACOES PENDENTES
--- hoje ~ 2026-04-22
+-- escrito com hoje ~ 22/04/2026; datas deslocadas por seed_dt (ver topo)
 -- mistura: ENTREGUE (passado entregue), VENCIDA (passado sem entrega), PENDENTE (atual/futuro)
 ------------------------------------------------
 
 INSERT INTO obrigacaopendente (datacriacao, dataatualizacao, obrigacaorecorrente_id, empresa_id, datavencimento, dataentrega, status) VALUES
 -- empresa 1 (Diniz) — histórico + ciclo atual
-(NOW(), NOW(), 1, 1, '2026-01-20', '2026-01-19', 'ENTREGUE'),   -- 1
-(NOW(), NOW(), 1, 1, '2026-02-20', '2026-02-19', 'ENTREGUE'),   -- 2
-(NOW(), NOW(), 1, 1, '2026-03-20', '2026-03-21', 'ENTREGUE'),   -- 3
-(NOW(), NOW(), 1, 1, '2026-04-20', NULL,         'VENCIDA'),    -- 4  (passou de hoje sem entrega)
-(NOW(), NOW(), 1, 1, '2026-05-20', NULL,         'PENDENTE'),   -- 5
-(NOW(), NOW(), 2, 1, '2026-04-25', NULL,         'PENDENTE'),   -- 6  (DARF IRPJ — vence em dias)
-(NOW(), NOW(), 3, 1, '2026-02-07', '2026-02-06', 'ENTREGUE'),   -- 7  FGTS fev
-(NOW(), NOW(), 3, 1, '2026-03-07', '2026-03-07', 'ENTREGUE'),   -- 8  FGTS mar
-(NOW(), NOW(), 3, 1, '2026-04-07', NULL,         'VENCIDA'),    -- 9  FGTS abr atrasado
-(NOW(), NOW(), 3, 1, '2026-05-07', NULL,         'PENDENTE'),   -- 10
-(NOW(), NOW(), 4, 1, '2026-02-20', '2026-02-20', 'ENTREGUE'),   -- 11
-(NOW(), NOW(), 4, 1, '2026-03-20', '2026-03-18', 'ENTREGUE'),   -- 12
-(NOW(), NOW(), 4, 1, '2026-04-20', NULL,         'VENCIDA'),    -- 13 INSS abr atrasado
-(NOW(), NOW(), 5, 1, '2026-02-28', '2026-02-28', 'ENTREGUE'),   -- 14 Balancete fev
-(NOW(), NOW(), 5, 1, '2026-03-30', '2026-04-02', 'ENTREGUE'),   -- 15
-(NOW(), NOW(), 5, 1, '2026-04-30', NULL,         'PENDENTE'),   -- 16
+(NOW(), NOW(), 1, 1, seed_dt(DATE '2026-01-20'), seed_dt(DATE '2026-01-19'), 'ENTREGUE'),   -- 1
+(NOW(), NOW(), 1, 1, seed_dt(DATE '2026-02-20'), seed_dt(DATE '2026-02-19'), 'ENTREGUE'),   -- 2
+(NOW(), NOW(), 1, 1, seed_dt(DATE '2026-03-20'), seed_dt(DATE '2026-03-21'), 'ENTREGUE'),   -- 3
+(NOW(), NOW(), 1, 1, seed_dt(DATE '2026-04-20'), NULL,         'VENCIDA'),    -- 4  (passou de hoje sem entrega)
+(NOW(), NOW(), 1, 1, seed_dt(DATE '2026-05-20'), NULL,         'PENDENTE'),   -- 5
+(NOW(), NOW(), 2, 1, seed_dt(DATE '2026-04-25'), NULL,         'PENDENTE'),   -- 6  (DARF IRPJ — vence em dias)
+(NOW(), NOW(), 3, 1, seed_dt(DATE '2026-02-07'), seed_dt(DATE '2026-02-06'), 'ENTREGUE'),   -- 7  FGTS fev
+(NOW(), NOW(), 3, 1, seed_dt(DATE '2026-03-07'), seed_dt(DATE '2026-03-07'), 'ENTREGUE'),   -- 8  FGTS mar
+(NOW(), NOW(), 3, 1, seed_dt(DATE '2026-04-07'), NULL,         'VENCIDA'),    -- 9  FGTS abr atrasado
+(NOW(), NOW(), 3, 1, seed_dt(DATE '2026-05-07'), NULL,         'PENDENTE'),   -- 10
+(NOW(), NOW(), 4, 1, seed_dt(DATE '2026-02-20'), seed_dt(DATE '2026-02-20'), 'ENTREGUE'),   -- 11
+(NOW(), NOW(), 4, 1, seed_dt(DATE '2026-03-20'), seed_dt(DATE '2026-03-18'), 'ENTREGUE'),   -- 12
+(NOW(), NOW(), 4, 1, seed_dt(DATE '2026-04-20'), NULL,         'VENCIDA'),    -- 13 INSS abr atrasado
+(NOW(), NOW(), 5, 1, seed_dt(DATE '2026-02-28'), seed_dt(DATE '2026-02-28'), 'ENTREGUE'),   -- 14 Balancete fev
+(NOW(), NOW(), 5, 1, seed_dt(DATE '2026-03-30'), seed_dt(DATE '2026-04-02'), 'ENTREGUE'),   -- 15
+(NOW(), NOW(), 5, 1, seed_dt(DATE '2026-04-30'), NULL,         'PENDENTE'),   -- 16
 -- empresa 2 (Padaria)
-(NOW(), NOW(), 7, 2, '2026-02-20', '2026-02-20', 'ENTREGUE'),   -- 17
-(NOW(), NOW(), 7, 2, '2026-03-20', '2026-03-19', 'ENTREGUE'),   -- 18
-(NOW(), NOW(), 7, 2, '2026-04-20', NULL,         'VENCIDA'),    -- 19
-(NOW(), NOW(), 7, 2, '2026-05-20', NULL,         'PENDENTE'),   -- 20
-(NOW(), NOW(), 8, 2, '2026-03-07', '2026-03-07', 'ENTREGUE'),   -- 21
-(NOW(), NOW(), 8, 2, '2026-04-07', NULL,         'VENCIDA'),    -- 22
+(NOW(), NOW(), 7, 2, seed_dt(DATE '2026-02-20'), seed_dt(DATE '2026-02-20'), 'ENTREGUE'),   -- 17
+(NOW(), NOW(), 7, 2, seed_dt(DATE '2026-03-20'), seed_dt(DATE '2026-03-19'), 'ENTREGUE'),   -- 18
+(NOW(), NOW(), 7, 2, seed_dt(DATE '2026-04-20'), NULL,         'VENCIDA'),    -- 19
+(NOW(), NOW(), 7, 2, seed_dt(DATE '2026-05-20'), NULL,         'PENDENTE'),   -- 20
+(NOW(), NOW(), 8, 2, seed_dt(DATE '2026-03-07'), seed_dt(DATE '2026-03-07'), 'ENTREGUE'),   -- 21
+(NOW(), NOW(), 8, 2, seed_dt(DATE '2026-04-07'), NULL,         'VENCIDA'),    -- 22
 -- empresa 3 (Auto Peças)
-(NOW(), NOW(), 9, 3, '2026-02-15', '2026-02-15', 'ENTREGUE'),   -- 23
-(NOW(), NOW(), 9, 3, '2026-03-15', '2026-03-15', 'ENTREGUE'),   -- 24
-(NOW(), NOW(), 9, 3, '2026-04-15', NULL,         'VENCIDA'),    -- 25
-(NOW(), NOW(), 10, 3, '2026-03-20', '2026-03-20', 'ENTREGUE'),  -- 26
-(NOW(), NOW(), 10, 3, '2026-04-20', NULL,         'VENCIDA'),   -- 27
-(NOW(), NOW(), 11, 3, '2026-04-20', NULL,         'VENCIDA'),   -- 28
+(NOW(), NOW(), 9, 3, seed_dt(DATE '2026-02-15'), seed_dt(DATE '2026-02-15'), 'ENTREGUE'),   -- 23
+(NOW(), NOW(), 9, 3, seed_dt(DATE '2026-03-15'), seed_dt(DATE '2026-03-15'), 'ENTREGUE'),   -- 24
+(NOW(), NOW(), 9, 3, seed_dt(DATE '2026-04-15'), NULL,         'VENCIDA'),    -- 25
+(NOW(), NOW(), 10, 3, seed_dt(DATE '2026-03-20'), seed_dt(DATE '2026-03-20'), 'ENTREGUE'),  -- 26
+(NOW(), NOW(), 10, 3, seed_dt(DATE '2026-04-20'), NULL,         'VENCIDA'),   -- 27
+(NOW(), NOW(), 11, 3, seed_dt(DATE '2026-04-20'), NULL,         'VENCIDA'),   -- 28
 -- empresa 4 (Mercado)
-(NOW(), NOW(), 12, 4, '2026-03-15', '2026-03-14', 'ENTREGUE'),  -- 29
-(NOW(), NOW(), 12, 4, '2026-04-15', NULL,         'VENCIDA'),   -- 30
-(NOW(), NOW(), 13, 4, '2026-04-20', NULL,         'VENCIDA'),   -- 31
+(NOW(), NOW(), 12, 4, seed_dt(DATE '2026-03-15'), seed_dt(DATE '2026-03-14'), 'ENTREGUE'),  -- 29
+(NOW(), NOW(), 12, 4, seed_dt(DATE '2026-04-15'), NULL,         'VENCIDA'),   -- 30
+(NOW(), NOW(), 13, 4, seed_dt(DATE '2026-04-20'), NULL,         'VENCIDA'),   -- 31
 -- empresa 5 (Construtora)
-(NOW(), NOW(), 14, 5, '2026-03-20', '2026-03-20', 'ENTREGUE'),  -- 32
-(NOW(), NOW(), 14, 5, '2026-04-20', NULL,         'VENCIDA'),   -- 33
-(NOW(), NOW(), 15, 5, '2026-04-30', NULL,         'PENDENTE'),  -- 34
+(NOW(), NOW(), 14, 5, seed_dt(DATE '2026-03-20'), seed_dt(DATE '2026-03-20'), 'ENTREGUE'),  -- 32
+(NOW(), NOW(), 14, 5, seed_dt(DATE '2026-04-20'), NULL,         'VENCIDA'),   -- 33
+(NOW(), NOW(), 15, 5, seed_dt(DATE '2026-04-30'), NULL,         'PENDENTE'),  -- 34
 -- empresa 6 (Farmácia)
-(NOW(), NOW(), 16, 6, '2026-02-20', '2026-02-21', 'ENTREGUE'),  -- 35
-(NOW(), NOW(), 16, 6, '2026-03-20', '2026-03-21', 'ENTREGUE'),  -- 36
-(NOW(), NOW(), 16, 6, '2026-04-20', NULL,         'VENCIDA'),   -- 37
+(NOW(), NOW(), 16, 6, seed_dt(DATE '2026-02-20'), seed_dt(DATE '2026-02-21'), 'ENTREGUE'),  -- 35
+(NOW(), NOW(), 16, 6, seed_dt(DATE '2026-03-20'), seed_dt(DATE '2026-03-21'), 'ENTREGUE'),  -- 36
+(NOW(), NOW(), 16, 6, seed_dt(DATE '2026-04-20'), NULL,         'VENCIDA'),   -- 37
 -- empresa 7 (Restaurante)
-(NOW(), NOW(), 17, 7, '2026-03-20', '2026-03-20', 'ENTREGUE'),  -- 38
-(NOW(), NOW(), 17, 7, '2026-04-20', NULL,         'PENDENTE'),  -- 39
+(NOW(), NOW(), 17, 7, seed_dt(DATE '2026-03-20'), seed_dt(DATE '2026-03-20'), 'ENTREGUE'),  -- 38
+(NOW(), NOW(), 17, 7, seed_dt(DATE '2026-04-20'), NULL,         'PENDENTE'),  -- 39
 -- empresa 8 (Clínica)
-(NOW(), NOW(), 19, 8, '2026-03-20', '2026-03-19', 'ENTREGUE'),  -- 40
-(NOW(), NOW(), 19, 8, '2026-04-20', NULL,         'PENDENTE'),  -- 41
-(NOW(), NOW(), 20, 8, '2026-03-10', '2026-03-10', 'ENTREGUE'),  -- 42
-(NOW(), NOW(), 20, 8, '2026-04-10', NULL,         'VENCIDA'),   -- 43
-(NOW(), NOW(), 20, 8, '2026-05-10', NULL,         'PENDENTE'),  -- 44
+(NOW(), NOW(), 19, 8, seed_dt(DATE '2026-03-20'), seed_dt(DATE '2026-03-19'), 'ENTREGUE'),  -- 40
+(NOW(), NOW(), 19, 8, seed_dt(DATE '2026-04-20'), NULL,         'PENDENTE'),  -- 41
+(NOW(), NOW(), 20, 8, seed_dt(DATE '2026-03-10'), seed_dt(DATE '2026-03-10'), 'ENTREGUE'),  -- 42
+(NOW(), NOW(), 20, 8, seed_dt(DATE '2026-04-10'), NULL,         'VENCIDA'),   -- 43
+(NOW(), NOW(), 20, 8, seed_dt(DATE '2026-05-10'), NULL,         'PENDENTE'),  -- 44
 -- empresa 9 (Transportes)
-(NOW(), NOW(), 21, 9, '2026-03-15', '2026-03-14', 'ENTREGUE'),  -- 45
-(NOW(), NOW(), 21, 9, '2026-04-15', NULL,         'VENCIDA'),   -- 46
-(NOW(), NOW(), 22, 9, '2026-04-07', NULL,         'VENCIDA'),   -- 47
-(NOW(), NOW(), 23, 9, '2026-04-20', NULL,         'PENDENTE'),  -- 48
+(NOW(), NOW(), 21, 9, seed_dt(DATE '2026-03-15'), seed_dt(DATE '2026-03-14'), 'ENTREGUE'),  -- 45
+(NOW(), NOW(), 21, 9, seed_dt(DATE '2026-04-15'), NULL,         'VENCIDA'),   -- 46
+(NOW(), NOW(), 22, 9, seed_dt(DATE '2026-04-07'), NULL,         'VENCIDA'),   -- 47
+(NOW(), NOW(), 23, 9, seed_dt(DATE '2026-04-20'), NULL,         'PENDENTE'),  -- 48
 -- empresa 10 (Escola)
-(NOW(), NOW(), 24, 10, '2026-03-20', '2026-03-20', 'ENTREGUE'), -- 49
-(NOW(), NOW(), 24, 10, '2026-04-20', NULL,         'PENDENTE'), -- 50
-(NOW(), NOW(), 25, 10, '2026-04-10', NULL,         'VENCIDA'),  -- 51
-(NOW(), NOW(), 25, 10, '2026-05-10', NULL,         'PENDENTE'); -- 52
+(NOW(), NOW(), 24, 10, seed_dt(DATE '2026-03-20'), seed_dt(DATE '2026-03-20'), 'ENTREGUE'), -- 49
+(NOW(), NOW(), 24, 10, seed_dt(DATE '2026-04-20'), NULL,         'PENDENTE'), -- 50
+(NOW(), NOW(), 25, 10, seed_dt(DATE '2026-04-10'), NULL,         'VENCIDA'),  -- 51
+(NOW(), NOW(), 25, 10, seed_dt(DATE '2026-05-10'), NULL,         'PENDENTE'); -- 52
 
 ------------------------------------------------
 -- ARQUIVOS (entregues, pendentes, vencidos, arquivados, lixeira)
@@ -295,103 +315,103 @@ INSERT INTO arquivo
 VALUES
 -- ====== ENTREGUES (vinculados a obrigações entregues) ======
 (NOW(), NOW(), 'a01.pdf', 'das-jan-2026.pdf',         138000, 'PDF', 'empresa-1/pasta-24/a01.pdf', 'a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4',
- 'DAS de janeiro/2026',       '2026-01-20', 'ENTREGUE', 'DAS',           NULL, 1, 1, 24, 1),
+ 'DAS de janeiro/2026',       seed_dt(DATE '2026-01-20'), 'ENTREGUE', 'DAS',           NULL, 1, 1, 24, 1),
 (NOW(), NOW(), 'a02.pdf', 'das-fev-2026.pdf',         142000, 'PDF', 'empresa-1/pasta-24/a02.pdf', 'b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5',
- 'DAS de fevereiro/2026',     '2026-02-20', 'ENTREGUE', 'DAS',           NULL, 1, 1, 24, 2),
+ 'DAS de fevereiro/2026',     seed_dt(DATE '2026-02-20'), 'ENTREGUE', 'DAS',           NULL, 1, 1, 24, 2),
 (NOW(), NOW(), 'a03.pdf', 'das-mar-2026.pdf',         145000, 'PDF', 'empresa-1/pasta-24/a03.pdf', 'c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6',
- 'DAS de março/2026',         '2026-03-20', 'ENTREGUE', 'DAS',           NULL, 1, 4, 24, 3),
+ 'DAS de março/2026',         seed_dt(DATE '2026-03-20'), 'ENTREGUE', 'DAS',           NULL, 1, 4, 24, 3),
 (NOW(), NOW(), 'a04.pdf', 'inss-fev-2026.pdf',        86000,  'PDF', 'empresa-1/pasta-23/a04.pdf', 'd4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1',
- 'Guia INSS fevereiro',       '2026-02-20', 'ENTREGUE', 'GUIA_IMPOSTO',  NULL, 1, 4, 23, 11),
+ 'Guia INSS fevereiro',       seed_dt(DATE '2026-02-20'), 'ENTREGUE', 'GUIA_IMPOSTO',  NULL, 1, 4, 23, 11),
 (NOW(), NOW(), 'a05.pdf', 'inss-mar-2026.pdf',        88000,  'PDF', 'empresa-1/pasta-23/a05.pdf', 'e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2',
- 'Guia INSS março',           '2026-03-20', 'ENTREGUE', 'GUIA_IMPOSTO',  NULL, 1, 5, 23, 12),
+ 'Guia INSS março',           seed_dt(DATE '2026-03-20'), 'ENTREGUE', 'GUIA_IMPOSTO',  NULL, 1, 5, 23, 12),
 (NOW(), NOW(), 'a06.pdf', 'fgts-fev-2026.pdf',        90000,  'PDF', 'empresa-1/pasta-23/a06.pdf', 'f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3',
- 'FGTS fevereiro',            '2026-02-07', 'ENTREGUE', 'GUIA_IMPOSTO',  NULL, 1, 5, 23, 7),
+ 'FGTS fevereiro',            seed_dt(DATE '2026-02-07'), 'ENTREGUE', 'GUIA_IMPOSTO',  NULL, 1, 5, 23, 7),
 (NOW(), NOW(), 'a07.pdf', 'fgts-mar-2026.pdf',        92000,  'PDF', 'empresa-1/pasta-23/a07.pdf', '1a2b3c4d5e6f1a2b3c4d5e6f1a2b3c4d',
- 'FGTS março',                '2026-03-07', 'ENTREGUE', 'GUIA_IMPOSTO',  NULL, 1, 6, 23, 8),
+ 'FGTS março',                seed_dt(DATE '2026-03-07'), 'ENTREGUE', 'GUIA_IMPOSTO',  NULL, 1, 6, 23, 8),
 (NOW(), NOW(), 'a08.pdf', 'balancete-fev-2026.pdf',   280000, 'PDF', 'empresa-1/pasta-33/a08.pdf', '2b3c4d5e6f1a2b3c4d5e6f1a2b3c4d5e',
- 'Balancete fev/2026',        '2026-02-28', 'ENTREGUE', 'BALANCETE',     NULL, 1, 4, 33, 14),
+ 'Balancete fev/2026',        seed_dt(DATE '2026-02-28'), 'ENTREGUE', 'BALANCETE',     NULL, 1, 4, 33, 14),
 (NOW(), NOW(), 'a09.pdf', 'balancete-mar-2026.pdf',   290000, 'PDF', 'empresa-1/pasta-33/a09.pdf', '3c4d5e6f1a2b3c4d5e6f1a2b3c4d5e6f',
- 'Balancete mar/2026',        '2026-03-30', 'ENTREGUE', 'BALANCETE',     NULL, 1, 5, 33, 15),
+ 'Balancete mar/2026',        seed_dt(DATE '2026-03-30'), 'ENTREGUE', 'BALANCETE',     NULL, 1, 5, 33, 15),
 (NOW(), NOW(), 'a10.pdf', 'das-padaria-fev.pdf',      115000, 'PDF', 'empresa-2/pasta-28/a10.pdf', '4d5e6f1a2b3c4d5e6f1a2b3c4d5e6f1a',
- 'DAS Padaria fev',           '2026-02-20', 'ENTREGUE', 'DAS',           NULL, 2, 7, 28, 17),
+ 'DAS Padaria fev',           seed_dt(DATE '2026-02-20'), 'ENTREGUE', 'DAS',           NULL, 2, 7, 28, 17),
 (NOW(), NOW(), 'a11.pdf', 'das-padaria-mar.pdf',      120000, 'PDF', 'empresa-2/pasta-28/a11.pdf', '5e6f1a2b3c4d5e6f1a2b3c4d5e6f1a2b',
- 'DAS Padaria mar',           '2026-03-20', 'ENTREGUE', 'DAS',           NULL, 2, 7, 28, 18),
+ 'DAS Padaria mar',           seed_dt(DATE '2026-03-20'), 'ENTREGUE', 'DAS',           NULL, 2, 7, 28, 18),
 (NOW(), NOW(), 'a12.pdf', 'fgts-padaria-mar.pdf',     80000,  'PDF', 'empresa-2/pasta-6/a12.pdf',  '6f1a2b3c4d5e6f1a2b3c4d5e6f1a2b3c',
- 'FGTS Padaria mar',          '2026-03-07', 'ENTREGUE', 'GUIA_IMPOSTO',  NULL, 2, 7, 6,  21),
+ 'FGTS Padaria mar',          seed_dt(DATE '2026-03-07'), 'ENTREGUE', 'GUIA_IMPOSTO',  NULL, 2, 7, 6,  21),
 (NOW(), NOW(), 'a13.pdf', 'icms-autopecas-fev.pdf',   170000, 'PDF', 'empresa-3/pasta-30/a13.pdf', '7a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d',
- 'ICMS Auto Peças fev',       '2026-02-15', 'ENTREGUE', 'GUIA_IMPOSTO',  NULL, 3, 8, 30, 23),
+ 'ICMS Auto Peças fev',       seed_dt(DATE '2026-02-15'), 'ENTREGUE', 'GUIA_IMPOSTO',  NULL, 3, 8, 30, 23),
 (NOW(), NOW(), 'a14.pdf', 'icms-autopecas-mar.pdf',   175000, 'PDF', 'empresa-3/pasta-30/a14.pdf', '8b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e',
- 'ICMS Auto Peças mar',       '2026-03-15', 'ENTREGUE', 'GUIA_IMPOSTO',  NULL, 3, 8, 30, 24),
+ 'ICMS Auto Peças mar',       seed_dt(DATE '2026-03-15'), 'ENTREGUE', 'GUIA_IMPOSTO',  NULL, 3, 8, 30, 24),
 (NOW(), NOW(), 'a15.pdf', 'das-autopecas-mar.pdf',    125000, 'PDF', 'empresa-3/pasta-7/a15.pdf',  '9c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f',
- 'DAS Auto Peças mar',        '2026-03-20', 'ENTREGUE', 'DAS',           NULL, 3, 8, 7,  26),
+ 'DAS Auto Peças mar',        seed_dt(DATE '2026-03-20'), 'ENTREGUE', 'DAS',           NULL, 3, 8, 7,  26),
 (NOW(), NOW(), 'a16.pdf', 'icms-mercado-mar.pdf',     160000, 'PDF', 'empresa-4/pasta-9/a16.pdf',  '0d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a',
- 'ICMS Mercado mar',          '2026-03-15', 'ENTREGUE', 'GUIA_IMPOSTO',  NULL, 4, 9, 9,  29),
+ 'ICMS Mercado mar',          seed_dt(DATE '2026-03-15'), 'ENTREGUE', 'GUIA_IMPOSTO',  NULL, 4, 9, 9,  29),
 (NOW(), NOW(), 'a17.pdf', 'inss-obra-mar.pdf',        98000,  'PDF', 'empresa-5/pasta-11/a17.pdf', '1e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b',
- 'INSS Obra mar',             '2026-03-20', 'ENTREGUE', 'GUIA_IMPOSTO',  NULL, 5, 10, 11, 32),
+ 'INSS Obra mar',             seed_dt(DATE '2026-03-20'), 'ENTREGUE', 'GUIA_IMPOSTO',  NULL, 5, 10, 11, 32),
 (NOW(), NOW(), 'a18.pdf', 'das-farmacia-fev.pdf',     116000, 'PDF', 'empresa-6/pasta-13/a18.pdf', '2f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c',
- 'DAS Farmácia fev',          '2026-02-20', 'ENTREGUE', 'DAS',           NULL, 6, 11, 13, 35),
+ 'DAS Farmácia fev',          seed_dt(DATE '2026-02-20'), 'ENTREGUE', 'DAS',           NULL, 6, 11, 13, 35),
 (NOW(), NOW(), 'a19.pdf', 'das-farmacia-mar.pdf',     118000, 'PDF', 'empresa-6/pasta-13/a19.pdf', '3a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d',
- 'DAS Farmácia mar',          '2026-03-20', 'ENTREGUE', 'DAS',           NULL, 6, 11, 13, 36),
+ 'DAS Farmácia mar',          seed_dt(DATE '2026-03-20'), 'ENTREGUE', 'DAS',           NULL, 6, 11, 13, 36),
 (NOW(), NOW(), 'a20.pdf', 'das-restaurante-mar.pdf',  122000, 'PDF', 'empresa-7/pasta-14/a20.pdf', '4b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e',
- 'DAS Restaurante mar',       '2026-03-20', 'ENTREGUE', 'DAS',           NULL, 7, 12, 14, 38),
+ 'DAS Restaurante mar',       seed_dt(DATE '2026-03-20'), 'ENTREGUE', 'DAS',           NULL, 7, 12, 14, 38),
 (NOW(), NOW(), 'a21.pdf', 'das-clinica-mar.pdf',      119000, 'PDF', 'empresa-8/pasta-15/a21.pdf', '5c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f',
- 'DAS Clínica mar',           '2026-03-20', 'ENTREGUE', 'DAS',           NULL, 8, 13, 15, 40),
+ 'DAS Clínica mar',           seed_dt(DATE '2026-03-20'), 'ENTREGUE', 'DAS',           NULL, 8, 13, 15, 40),
 (NOW(), NOW(), 'a22.pdf', 'iss-clinica-mar.pdf',      75000,  'PDF', 'empresa-8/pasta-15/a22.pdf', '6d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a',
- 'ISS Clínica mar',           '2026-03-10', 'ENTREGUE', 'GUIA_IMPOSTO',  NULL, 8, 13, 15, 42),
+ 'ISS Clínica mar',           seed_dt(DATE '2026-03-10'), 'ENTREGUE', 'GUIA_IMPOSTO',  NULL, 8, 13, 15, 42),
 (NOW(), NOW(), 'a23.pdf', 'icms-translog-mar.pdf',    180000, 'PDF', 'empresa-9/pasta-17/a23.pdf', '7e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b',
- 'ICMS Transportes mar',      '2026-03-15', 'ENTREGUE', 'GUIA_IMPOSTO',  NULL, 9, 14, 17, 45),
+ 'ICMS Transportes mar',      seed_dt(DATE '2026-03-15'), 'ENTREGUE', 'GUIA_IMPOSTO',  NULL, 9, 14, 17, 45),
 (NOW(), NOW(), 'a24.pdf', 'das-escola-mar.pdf',       117000, 'PDF', 'empresa-10/pasta-18/a24.pdf','8f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c',
- 'DAS Escola mar',            '2026-03-20', 'ENTREGUE', 'DAS',           NULL, 10, 15, 18, 49),
+ 'DAS Escola mar',            seed_dt(DATE '2026-03-20'), 'ENTREGUE', 'DAS',           NULL, 10, 15, 18, 49),
 
 -- ====== PENDENTES (vencimento atual / futuro próximo) ======
 (NOW(), NOW(), 'a25.pdf', 'das-abr-2026.pdf',         140000, 'PDF', 'empresa-1/pasta-24/a25.pdf', 'a9b8c7d6e5f4a9b8c7d6e5f4a9b8c7d6',
- 'DAS abril (rascunho)',      '2026-05-20', 'PENDENTE', 'DAS',           NULL, 1, 4, 24, 5),
+ 'DAS abril (rascunho)',      seed_dt(DATE '2026-05-20'), 'PENDENTE', 'DAS',           NULL, 1, 4, 24, 5),
 (NOW(), NOW(), 'a26.pdf', 'darf-irpj-2026Q1.pdf',     160000, 'PDF', 'empresa-1/pasta-23/a26.pdf', 'b8c7d6e5f4a9b8c7d6e5f4a9b8c7d6e5',
- 'DARF IRPJ 1º trimestre',    '2026-04-25', 'PENDENTE', 'DARF',          NULL, 1, 1, 23, 6),
+ 'DARF IRPJ 1º trimestre',    seed_dt(DATE '2026-04-25'), 'PENDENTE', 'DARF',          NULL, 1, 1, 23, 6),
 (NOW(), NOW(), 'a27.xml', 'nfe-saida-001.xml',        45000,  'XML', 'empresa-1/pasta-22/a27.xml', 'c7d6e5f4a9b8c7d6e5f4a9b8c7d6e5f4',
- 'NF-e de saída 001',         '2026-04-25', 'PENDENTE', 'NFE_SAIDA',     NULL, 1, 4, 22, NULL),
+ 'NF-e de saída 001',         seed_dt(DATE '2026-04-25'), 'PENDENTE', 'NFE_SAIDA',     NULL, 1, 4, 22, NULL),
 (NOW(), NOW(), 'a28.xml', 'nfe-saida-002.xml',        47000,  'XML', 'empresa-1/pasta-22/a28.xml', 'd6e5f4a9b8c7d6e5f4a9b8c7d6e5f4a9',
- 'NF-e de saída 002',         '2026-04-30', 'PENDENTE', 'NFE_SAIDA',     NULL, 1, 4, 22, NULL),
+ 'NF-e de saída 002',         seed_dt(DATE '2026-04-30'), 'PENDENTE', 'NFE_SAIDA',     NULL, 1, 4, 22, NULL),
 (NOW(), NOW(), 'a29.xml', 'nfe-entrada-014.xml',      48000,  'XML', 'empresa-1/pasta-21/a29.xml', 'e5f4a9b8c7d6e5f4a9b8c7d6e5f4a9b8',
- 'NF-e de entrada 014',       '2026-04-30', 'PENDENTE', 'NFE_ENTRADA',   NULL, 1, 5, 21, NULL),
+ 'NF-e de entrada 014',       seed_dt(DATE '2026-04-30'), 'PENDENTE', 'NFE_ENTRADA',   NULL, 1, 5, 21, NULL),
 (NOW(), NOW(), 'a30.pdf', 'folha-abr-2026.pdf',       210000, 'PDF', 'empresa-1/pasta-25/a30.pdf', 'f4a9b8c7d6e5f4a9b8c7d6e5f4a9b8c7',
- 'Folha abril (rascunho)',    '2026-05-05', 'PENDENTE', 'FOLHA_PAGAMENTO', NULL, 1, 6, 25, NULL),
+ 'Folha abril (rascunho)',    seed_dt(DATE '2026-05-05'), 'PENDENTE', 'FOLHA_PAGAMENTO', NULL, 1, 6, 25, NULL),
 (NOW(), NOW(), 'a31.pdf', 'das-padaria-mai.pdf',      123000, 'PDF', 'empresa-2/pasta-28/a31.pdf', '11223344556677881122334455667788',
- 'DAS Padaria mai (rascunho)','2026-05-20', 'PENDENTE', 'DAS',           NULL, 2, 7, 28, 20),
+ 'DAS Padaria mai (rascunho)',seed_dt(DATE '2026-05-20'), 'PENDENTE', 'DAS',           NULL, 2, 7, 28, 20),
 (NOW(), NOW(), 'a32.pdf', 'das-restaurante-abr.pdf',  124000, 'PDF', 'empresa-7/pasta-14/a32.pdf', '22334455667788992233445566778899',
- 'DAS Restaurante abr',       '2026-04-20', 'PENDENTE', 'DAS',           NULL, 7, 12, 14, 39),
+ 'DAS Restaurante abr',       seed_dt(DATE '2026-04-20'), 'PENDENTE', 'DAS',           NULL, 7, 12, 14, 39),
 (NOW(), NOW(), 'a33.pdf', 'das-clinica-abr.pdf',      120000, 'PDF', 'empresa-8/pasta-15/a33.pdf', '3344556677889900aabbccdd11223344',
- 'DAS Clínica abr',           '2026-04-20', 'PENDENTE', 'DAS',           NULL, 8, 13, 15, 41),
+ 'DAS Clínica abr',           seed_dt(DATE '2026-04-20'), 'PENDENTE', 'DAS',           NULL, 8, 13, 15, 41),
 (NOW(), NOW(), 'a34.pdf', 'inss-translog-abr.pdf',    99000,  'PDF', 'empresa-9/pasta-16/a34.pdf', '44556677889900aabbccddee11223344',
- 'INSS Transportes abr',      '2026-04-20', 'PENDENTE', 'GUIA_IMPOSTO',  NULL, 9, 14, 16, 48),
+ 'INSS Transportes abr',      seed_dt(DATE '2026-04-20'), 'PENDENTE', 'GUIA_IMPOSTO',  NULL, 9, 14, 16, 48),
 (NOW(), NOW(), 'a35.pdf', 'das-escola-abr.pdf',       119000, 'PDF', 'empresa-10/pasta-18/a35.pdf','55667788990011223344556677889900',
- 'DAS Escola abr',            '2026-04-20', 'PENDENTE', 'DAS',           NULL, 10, 15, 18, 50),
+ 'DAS Escola abr',            seed_dt(DATE '2026-04-20'), 'PENDENTE', 'DAS',           NULL, 10, 15, 18, 50),
 
 -- ====== VENCIDOS (sem entrega, já passou o prazo) ======
 (NOW(), NOW(), 'a36.pdf', 'fgts-padaria-abr.pdf',     81000,  'PDF', 'empresa-2/pasta-6/a36.pdf',  '66778899aabbccdd6677889900aabbcc',
- 'FGTS Padaria abril (atrasado)', '2026-04-07', 'VENCIDO', 'GUIA_IMPOSTO', NULL, 2, 7, 6,  22),
+ 'FGTS Padaria abril (atrasado)', seed_dt(DATE '2026-04-07'), 'VENCIDO', 'GUIA_IMPOSTO', NULL, 2, 7, 6,  22),
 (NOW(), NOW(), 'a37.pdf', 'icms-autopecas-abr.pdf',   168000, 'PDF', 'empresa-3/pasta-7/a37.pdf',  '778899aabbccddee778899aabbccddee',
- 'ICMS Auto Peças abr',       '2026-04-15', 'VENCIDO', 'GUIA_IMPOSTO',  NULL, 3, 8, 7,  25),
+ 'ICMS Auto Peças abr',       seed_dt(DATE '2026-04-15'), 'VENCIDO', 'GUIA_IMPOSTO',  NULL, 3, 8, 7,  25),
 (NOW(), NOW(), 'a38.pdf', 'das-autopecas-abr.pdf',    126000, 'PDF', 'empresa-3/pasta-7/a38.pdf',  '8899aabbccddeeff8899aabbccddeeff',
- 'DAS Auto Peças abr',        '2026-04-20', 'VENCIDO', 'DAS',           NULL, 3, 8, 7,  27),
+ 'DAS Auto Peças abr',        seed_dt(DATE '2026-04-20'), 'VENCIDO', 'DAS',           NULL, 3, 8, 7,  27),
 (NOW(), NOW(), 'a39.pdf', 'inss-autopecas-abr.pdf',   89000,  'PDF', 'empresa-3/pasta-8/a39.pdf',  '99aabbccddeeff0099aabbccddeeff00',
- 'INSS Auto Peças abr',       '2026-04-20', 'VENCIDO', 'GUIA_IMPOSTO',  NULL, 3, 8, 8,  28),
+ 'INSS Auto Peças abr',       seed_dt(DATE '2026-04-20'), 'VENCIDO', 'GUIA_IMPOSTO',  NULL, 3, 8, 8,  28),
 (NOW(), NOW(), 'a40.pdf', 'icms-mercado-abr.pdf',     155000, 'PDF', 'empresa-4/pasta-9/a40.pdf',  'aabbccddeeff0011aabbccddeeff0011',
- 'ICMS Mercado abr',          '2026-04-15', 'VENCIDO', 'GUIA_IMPOSTO',  NULL, 4, 9, 9,  30),
+ 'ICMS Mercado abr',          seed_dt(DATE '2026-04-15'), 'VENCIDO', 'GUIA_IMPOSTO',  NULL, 4, 9, 9,  30),
 (NOW(), NOW(), 'a41.pdf', 'das-mercado-abr.pdf',      121000, 'PDF', 'empresa-4/pasta-9/a41.pdf',  'bbccddeeff001122bbccddeeff001122',
- 'DAS Mercado abr',           '2026-04-20', 'VENCIDO', 'DAS',           NULL, 4, 9, 9,  31),
+ 'DAS Mercado abr',           seed_dt(DATE '2026-04-20'), 'VENCIDO', 'DAS',           NULL, 4, 9, 9,  31),
 (NOW(), NOW(), 'a42.pdf', 'inss-obra-abr.pdf',        99500,  'PDF', 'empresa-5/pasta-11/a42.pdf', 'ccddeeff00112233ccddeeff00112233',
- 'INSS Obra abr',             '2026-04-20', 'VENCIDO', 'GUIA_IMPOSTO',  NULL, 5, 10, 11, 33),
+ 'INSS Obra abr',             seed_dt(DATE '2026-04-20'), 'VENCIDO', 'GUIA_IMPOSTO',  NULL, 5, 10, 11, 33),
 (NOW(), NOW(), 'a43.pdf', 'das-farmacia-abr.pdf',     117000, 'PDF', 'empresa-6/pasta-13/a43.pdf', 'ddeeff0011223344ddeeff0011223344',
- 'DAS Farmácia abr',          '2026-04-20', 'VENCIDO', 'DAS',           NULL, 6, 11, 13, 37),
+ 'DAS Farmácia abr',          seed_dt(DATE '2026-04-20'), 'VENCIDO', 'DAS',           NULL, 6, 11, 13, 37),
 (NOW(), NOW(), 'a44.pdf', 'iss-clinica-abr.pdf',      76000,  'PDF', 'empresa-8/pasta-15/a44.pdf', 'eeff001122334455eeff001122334455',
- 'ISS Clínica abr',           '2026-04-10', 'VENCIDO', 'GUIA_IMPOSTO',  NULL, 8, 13, 15, 43),
+ 'ISS Clínica abr',           seed_dt(DATE '2026-04-10'), 'VENCIDO', 'GUIA_IMPOSTO',  NULL, 8, 13, 15, 43),
 (NOW(), NOW(), 'a45.pdf', 'icms-translog-abr.pdf',    181000, 'PDF', 'empresa-9/pasta-17/a45.pdf', 'ff00112233445566ff00112233445566',
- 'ICMS Transportes abr',      '2026-04-15', 'VENCIDO', 'GUIA_IMPOSTO',  NULL, 9, 14, 17, 46),
+ 'ICMS Transportes abr',      seed_dt(DATE '2026-04-15'), 'VENCIDO', 'GUIA_IMPOSTO',  NULL, 9, 14, 17, 46),
 (NOW(), NOW(), 'a46.pdf', 'fgts-translog-abr.pdf',    83000,  'PDF', 'empresa-9/pasta-16/a46.pdf', '00112233445566770011223344556677',
- 'FGTS Transportes abr',      '2026-04-07', 'VENCIDO', 'GUIA_IMPOSTO',  NULL, 9, 14, 16, 47),
+ 'FGTS Transportes abr',      seed_dt(DATE '2026-04-07'), 'VENCIDO', 'GUIA_IMPOSTO',  NULL, 9, 14, 16, 47),
 (NOW(), NOW(), 'a47.pdf', 'iss-escola-abr.pdf',       77000,  'PDF', 'empresa-10/pasta-18/a47.pdf','11223344556677881122334455667788',
- 'ISS Escola abr',            '2026-04-10', 'VENCIDO', 'GUIA_IMPOSTO',  NULL, 10, 15, 18, 51),
+ 'ISS Escola abr',            seed_dt(DATE '2026-04-10'), 'VENCIDO', 'GUIA_IMPOSTO',  NULL, 10, 15, 18, 51),
 
 -- ====== ARQUIVADOS (sem vencimento — documentos de referência) ======
 (NOW(), NOW(), 'a48.pdf', 'contrato-social-diniz.pdf',  320000, 'PDF',  'empresa-1/pasta-2/a48.pdf',   '223344556677889900aabbccddeeff00',
@@ -415,13 +435,27 @@ VALUES
 
 -- ====== LIXEIRA (excluidoem preenchido) ======
 (NOW(), NOW(), 'a57.pdf', 'documento-errado.pdf',     12000, 'PDF', 'empresa-1/pasta-1/a57.pdf', 'bbccddeeff001122334455667788aabb',
- 'Enviado por engano',        NULL, 'ARQUIVADO', 'OUTRO',          '2026-04-15 10:00:00', 1, 4, 1,  NULL),
+ 'Enviado por engano',        NULL, 'ARQUIVADO', 'OUTRO',          seed_ts(TIMESTAMP '2026-04-15 10:00:00'), 1, 4, 1,  NULL),
 (NOW(), NOW(), 'a58.pdf', 'duplicata-darf.pdf',       18000, 'PDF', 'empresa-1/pasta-23/a58.pdf','ccddeeff001122334455667788aabbcc',
- 'DARF duplicado',            NULL, 'ARQUIVADO', 'DARF',           '2026-04-10 16:30:00', 1, 1, 23, NULL),
+ 'DARF duplicado',            NULL, 'ARQUIVADO', 'DARF',           seed_ts(TIMESTAMP '2026-04-10 16:30:00'), 1, 1, 23, NULL),
 (NOW(), NOW(), 'a59.xml', 'nf-cancelada.xml',         32000, 'XML', 'empresa-2/pasta-5/a59.xml', 'ddeeff00112233445566778899aabbcc',
- 'NF cancelada',              NULL, 'ARQUIVADO', 'NFE_SAIDA',      '2026-04-12 09:15:00', 2, 7, 5,  NULL),
+ 'NF cancelada',              NULL, 'ARQUIVADO', 'NFE_SAIDA',      seed_ts(TIMESTAMP '2026-04-12 09:15:00'), 2, 7, 5,  NULL),
 (NOW(), NOW(), 'a60.pdf', 'guia-errada.pdf',          22000, 'PDF', 'empresa-3/pasta-7/a60.pdf', 'eeff0011223344556677889900aabbcc',
- 'Guia com valor errado',     NULL, 'ARQUIVADO', 'GUIA_IMPOSTO',   '2026-04-17 14:22:00', 3, 8, 7,  NULL);
+ 'Guia com valor errado',     NULL, 'ARQUIVADO', 'GUIA_IMPOSTO',   seed_ts(TIMESTAMP '2026-04-17 14:22:00'), 3, 8, 7,  NULL);
+
+-- pendências das obrigações do cliente (mês passado entregue, ciclo atual em aberto)
+INSERT INTO obrigacaopendente (datacriacao, dataatualizacao, obrigacaorecorrente_id, empresa_id, datavencimento, dataentrega, status) VALUES
+(NOW(), NOW(), 26, 2, seed_dt(DATE '2026-03-05'), seed_dt(DATE '2026-03-04'), 'ENTREGUE'),
+(NOW(), NOW(), 26, 2, seed_dt(DATE '2026-04-05'), NULL, 'PENDENTE'),
+(NOW(), NOW(), 27, 2, seed_dt(DATE '2026-03-05'), seed_dt(DATE '2026-03-06'), 'ENTREGUE'),
+(NOW(), NOW(), 27, 2, seed_dt(DATE '2026-04-05'), NULL, 'PENDENTE'),
+(NOW(), NOW(), 28, 3, seed_dt(DATE '2026-03-25'), NULL, 'VENCIDA'),
+(NOW(), NOW(), 28, 3, seed_dt(DATE '2026-04-25'), NULL, 'PENDENTE'),
+(NOW(), NOW(), 29, 3, seed_dt(DATE '2026-04-05'), NULL, 'PENDENTE'),
+(NOW(), NOW(), 30, 7, seed_dt(DATE '2026-04-05'), NULL, 'PENDENTE'),
+(NOW(), NOW(), 31, 8, seed_dt(DATE '2026-03-05'), seed_dt(DATE '2026-03-03'), 'ENTREGUE'),
+(NOW(), NOW(), 31, 8, seed_dt(DATE '2026-04-05'), NULL, 'PENDENTE');
+
 
 ------------------------------------------------
 -- LOG DE ACESSO (auditoria — linha do tempo dos últimos dias)
@@ -480,3 +514,24 @@ INSERT INTO logacesso (datacriacao, dataatualizacao, usuario_id, acao, entidade,
 (NOW() - INTERVAL '30 minutes',NOW() - INTERVAL '30 minutes',2,'LOGIN',             'Usuario', 2,    'Login efetuado');
 
 COMMIT;
+
+------------------------------------------------
+-- STATUS COERENTES COM A DATA DE HOJE (após o deslocamento de meses)
+------------------------------------------------
+UPDATE obrigacaopendente SET status = 'VENCIDA'  WHERE status = 'PENDENTE' AND datavencimento < CURRENT_DATE;
+UPDATE obrigacaopendente SET status = 'PENDENTE' WHERE status = 'VENCIDA'  AND datavencimento >= CURRENT_DATE;
+UPDATE obrigacaopendente SET dataentrega = LEAST(dataentrega, CURRENT_DATE) WHERE dataentrega IS NOT NULL;
+-- guias pagas: as entregues do escritório com vencimento até o mês passado foram pagas no vencimento;
+-- as do mês corrente ficam aguardando pagamento (o cliente confirma pelo portal)
+UPDATE obrigacaopendente p SET datapagamento = LEAST(p.datavencimento, CURRENT_DATE)
+  FROM obrigacaorecorrente r
+ WHERE p.obrigacaorecorrente_id = r.id AND p.status = 'ENTREGUE'
+   AND COALESCE(r.responsavel, 'ESCRITORIO') = 'ESCRITORIO'
+   AND p.datavencimento < date_trunc('month', CURRENT_DATE);
+-- para a demonstração: as 5 guias entregues mais recentes ainda sem pagamento confirmado
+UPDATE obrigacaopendente SET datapagamento = NULL
+ WHERE id IN (SELECT p.id FROM obrigacaopendente p JOIN obrigacaorecorrente r ON r.id = p.obrigacaorecorrente_id
+               WHERE p.status = 'ENTREGUE' AND COALESCE(r.responsavel, 'ESCRITORIO') = 'ESCRITORIO'
+               ORDER BY p.datavencimento DESC LIMIT 5);
+UPDATE arquivo SET status = 'VENCIDO'  WHERE status = 'PENDENTE' AND datavencimento IS NOT NULL AND datavencimento < CURRENT_DATE;
+UPDATE arquivo SET status = 'PENDENTE' WHERE status = 'VENCIDO'  AND datavencimento IS NOT NULL AND datavencimento >= CURRENT_DATE;

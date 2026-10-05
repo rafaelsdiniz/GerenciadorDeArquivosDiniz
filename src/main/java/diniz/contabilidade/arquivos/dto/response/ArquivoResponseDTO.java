@@ -24,6 +24,9 @@ public record ArquivoResponseDTO(
     Long idEmpresa,
     Long idUsuario,
     Long idPasta,
-    Long idObrigacaoPendente
-
+    Long idObrigacaoPendente,
+    /** Data do envio. */
+    LocalDateTime dataCriacao,
+    /** Nome de quem enviou. */
+    String nomeUsuario
 ) {}

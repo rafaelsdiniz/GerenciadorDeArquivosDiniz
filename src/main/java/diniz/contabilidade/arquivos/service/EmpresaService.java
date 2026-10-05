@@ -1,5 +1,6 @@
 package diniz.contabilidade.arquivos.service;
 
+import diniz.contabilidade.arquivos.repository.ComunicacaoDecRepository;
 import java.util.List;
 
 import diniz.contabilidade.arquivos.dto.request.EmpresaRequestDTO;
@@ -22,6 +23,9 @@ public class EmpresaService {
     @Inject
     EmpresaRepository empresaRepository;
 
+    @Inject
+    ComunicacaoDecRepository comunicacaoDecRepository;
+
     public List<EmpresaResponseDTO> listar() {
         return empresaRepository.listAll()
                 .stream()
@@ -40,6 +44,7 @@ public class EmpresaService {
         Empresa empresa = new Empresa();
         aplicar(empresa, dto);
         empresaRepository.persist(empresa);
+        comunicacaoDecRepository.vincularEmpresa(empresa);
         return toResponseDTO(empresa);
     }
 
@@ -55,6 +60,27 @@ public class EmpresaService {
     public void deletar(Long id) {
         Empresa empresa = empresaRepository.findByIdOptional(id)
                 .orElseThrow(() -> new NotFoundException("Empresa não encontrada"));
+
+        // dados próprios da empresa impedem a exclusão: avisa com clareza em vez de erro 500
+        var em = empresaRepository.getEntityManager();
+        String[][] dependentes = {
+            {"Arquivo", "arquivo(s)"}, {"Pasta", "pasta(s)"}, {"Usuario", "usuário(s)"},
+            {"Socio", "sócio(s)"}, {"ObrigacaoRecorrente", "obrigação(ões) recorrente(s)"},
+            {"ObrigacaoPendente", "pendência(s)"}
+        };
+        List<String> itens = new java.util.ArrayList<>();
+        for (String[] d : dependentes) {
+            Long n = em.createQuery("select count(x) from " + d[0] + " x where x.empresa = :e", Long.class)
+                    .setParameter("e", empresa).getSingleResult();
+            if (n > 0) itens.add(n + " " + d[1]);
+        }
+        if (!itens.isEmpty()) {
+            throw new IllegalArgumentException("Não é possível excluir: a empresa ainda tem " + String.join(", ", itens)
+                    + ". Remova ou transfira esses dados antes.");
+        }
+
+        // comunicações do DEC voltam a ficar como "CNPJ não cadastrado"
+        comunicacaoDecRepository.update("empresa = null where empresa = ?1", empresa);
         empresaRepository.delete(empresa);
     }
 

@@ -1,5 +1,6 @@
 package diniz.contabilidade.arquivos.resource;
 
+import diniz.contabilidade.arquivos.security.UsuarioLogado;
 import diniz.contabilidade.arquivos.service.DashboardService;
 import jakarta.annotation.security.RolesAllowed;
 import jakarta.inject.Inject;
@@ -17,10 +18,14 @@ public class DashboardResource {
     @Inject
     DashboardService service;
 
+    @Inject
+    UsuarioLogado usuario;
+
     @GET
     @Path("/empresa/{idEmpresa}")
     @RolesAllowed({"ADMIN", "FUNCIONARIO"})
     public Response porEmpresa(@PathParam("idEmpresa") Long idEmpresa) {
+        usuario.exigirEmpresa(idEmpresa);
         return Response.ok(service.porEmpresa(idEmpresa)).build();
     }
 }

@@ -10,7 +10,9 @@ import diniz.contabilidade.arquivos.model.entity.Empresa;
 import diniz.contabilidade.arquivos.model.entity.ObrigacaoPendente;
 import diniz.contabilidade.arquivos.model.entity.ObrigacaoRecorrente;
 import diniz.contabilidade.arquivos.model.enums.Periodicidade;
+import diniz.contabilidade.arquivos.model.enums.ResponsavelObrigacao;
 import diniz.contabilidade.arquivos.model.enums.StatusObrigacao;
+import diniz.contabilidade.arquivos.repository.ArquivoRepository;
 import diniz.contabilidade.arquivos.repository.EmpresaRepository;
 import diniz.contabilidade.arquivos.repository.ObrigacaoPendenteRepository;
 import diniz.contabilidade.arquivos.repository.ObrigacaoRecorrenteRepository;
@@ -30,6 +32,9 @@ public class ObrigacaoPendenteService {
 
     @Inject
     EmpresaRepository empresaRepository;
+
+    @Inject
+    ArquivoRepository arquivoRepository;
 
     public List<ObrigacaoPendenteResponseDTO> listar() {
         return repository.listAll().stream().map(this::toResponseDTO).toList();
@@ -77,6 +82,60 @@ public class ObrigacaoPendenteService {
         p.setStatus(StatusObrigacao.ENTREGUE);
         p.setDataEntrega(LocalDate.now());
         return toResponseDTO(p);
+    }
+
+    /** Desfaz uma entrega marcada por engano: volta a PENDENTE (ou VENCIDA se o prazo já passou). */
+    /** Confirma o pagamento da guia de uma obrigação do escritório já entregue. */
+    @Transactional
+    public ObrigacaoPendenteResponseDTO confirmarPagamento(Long id, LocalDate data) {
+        ObrigacaoPendente p = buscarEntidade(id);
+        if (p.getStatus() != StatusObrigacao.ENTREGUE) {
+            throw new IllegalArgumentException("Só é possível confirmar o pagamento depois que a guia foi entregue.");
+        }
+        if (responsavel(p) != ResponsavelObrigacao.ESCRITORIO) {
+            throw new IllegalArgumentException("Esta obrigação é de envio de documentos pelo cliente; não tem guia para pagar.");
+        }
+        LocalDate pagamento = data != null ? data : LocalDate.now();
+        if (pagamento.isAfter(LocalDate.now())) {
+            throw new IllegalArgumentException("A data de pagamento não pode ser no futuro.");
+        }
+        p.setDataPagamento(pagamento);
+        return toResponseDTO(p);
+    }
+
+    /** Desfaz a confirmação de pagamento (marcada por engano). */
+    @Transactional
+    public ObrigacaoPendenteResponseDTO desfazerPagamento(Long id) {
+        ObrigacaoPendente p = buscarEntidade(id);
+        p.setDataPagamento(null);
+        return toResponseDTO(p);
+    }
+
+    private ResponsavelObrigacao responsavel(ObrigacaoPendente p) {
+        return p.getObrigacaoRecorrente() != null ? p.getObrigacaoRecorrente().getResponsavel() : ResponsavelObrigacao.ESCRITORIO;
+    }
+
+    private String situacaoPagamento(ObrigacaoPendente p) {
+        if (p.getStatus() != StatusObrigacao.ENTREGUE || responsavel(p) != ResponsavelObrigacao.ESCRITORIO) return "NAO_SE_APLICA";
+        if (p.getDataPagamento() != null) return "PAGO";
+        boolean venceu = p.getDataVencimento() != null && p.getDataVencimento().isBefore(LocalDate.now());
+        return venceu ? "ATRASADO" : "AGUARDANDO";
+    }
+
+    @Transactional
+    public ObrigacaoPendenteResponseDTO reabrir(Long id) {
+        ObrigacaoPendente p = buscarEntidade(id);
+        p.setDataEntrega(null);
+        p.setDataPagamento(null);
+        boolean atrasada = p.getDataVencimento() != null && p.getDataVencimento().isBefore(LocalDate.now());
+        p.setStatus(atrasada ? StatusObrigacao.VENCIDA : StatusObrigacao.PENDENTE);
+        return toResponseDTO(p);
+    }
+
+    /** Gera a próxima ocorrência de uma recorrente (idempotente). */
+    @Transactional
+    public boolean gerarProxima(ObrigacaoRecorrente rec) {
+        return gerarProximaPendente(rec);
     }
 
     @Transactional
@@ -162,7 +221,23 @@ public class ObrigacaoPendenteService {
                 p.getDataVencimento(),
                 p.getDataEntrega(),
                 p.getStatus(),
-                diasParaVencer
+                diasParaVencer,
+                p.getEmpresa().getNomeFantasia(),
+                competencia(p),
+                p.getObrigacaoRecorrente() != null ? p.getObrigacaoRecorrente().getResponsavel() : ResponsavelObrigacao.ESCRITORIO,
+                arquivoRepository.count("obrigacaoPendente = ?1 and excluidoEm is null", p),
+                p.getDataPagamento(),
+                situacaoPagamento(p)
         );
+    }
+
+    private String competencia(ObrigacaoPendente p) {
+        if (p.getDataVencimento() == null) return null;
+        Periodicidade per = p.getObrigacaoRecorrente() != null ? p.getObrigacaoRecorrente().getPeriodicidade() : Periodicidade.MENSAL;
+        if (per == Periodicidade.ANUAL) {
+            return String.valueOf(p.getDataVencimento().getYear() - 1);
+        }
+        YearMonth ref = YearMonth.from(p.getDataVencimento()).minusMonths(1);
+        return String.format("%02d/%d", ref.getMonthValue(), ref.getYear());
     }
 }

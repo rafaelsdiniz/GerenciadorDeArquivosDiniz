@@ -1,0 +1,24 @@
+# Blueprint do Render: New + > Blueprint > escolha este repositório.
+# Os valores marcados com sync: false são pedidos no painel (não ficam no git).
+services:
+  - type: web
+    name: gerenciador-diniz-api
+    runtime: docker
+    plan: free
+    region: oregon
+    dockerfilePath: ./Dockerfile
+    envVars:
+      - key: DB_URL
+        sync: false        # jdbc:postgresql://<host-neon>/<banco>?sslmode=require
+      - key: DB_USER
+        sync: false
+      - key: DB_PASSWORD
+        sync: false
+      - key: CORS_ORIGINS
+        sync: false        # ex.: https://gerenciador-diniz.vercel.app
+      - key: DB_GENERATION
+        value: drop-and-create   # 1ª publicação: cria tabelas + dados de demonstração. Depois troque para: update
+      - key: DB_SEED
+        value: import.sql        # 1ª publicação. Depois troque para: no-file
+      - key: DEC_DEMO
+        value: "true"            # versão pública: comunicações do DEC fictícias (LGPD)

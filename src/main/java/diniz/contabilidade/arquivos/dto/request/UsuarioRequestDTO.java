@@ -16,8 +16,7 @@ public record UsuarioRequestDTO(
     @Email(message = "O email informado é inválido.")
     String email,
 
-    @NotBlank(message = "A senha do usuário é obrigatória.")
-    @Size(min = 6, message = "A senha deve conter no mínimo 6 caracteres.")
+    // obrigatória ao criar (validada no service); em branco na edição mantém a atual
     String senha,
 
     @NotNull(message = "O id da empresa é obrigatório.")

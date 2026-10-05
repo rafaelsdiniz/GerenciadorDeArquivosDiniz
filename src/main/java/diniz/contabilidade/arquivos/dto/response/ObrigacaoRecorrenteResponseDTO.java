@@ -1,6 +1,7 @@
 package diniz.contabilidade.arquivos.dto.response;
 
 import diniz.contabilidade.arquivos.model.enums.Periodicidade;
+import diniz.contabilidade.arquivos.model.enums.ResponsavelObrigacao;
 import diniz.contabilidade.arquivos.model.enums.TipoArquivo;
 
 public record ObrigacaoRecorrenteResponseDTO(
@@ -12,6 +13,7 @@ public record ObrigacaoRecorrenteResponseDTO(
     Periodicidade periodicidade,
     Integer diaVencimento,
     TipoArquivo tipoArquivoEsperado,
-    Boolean ativo
+    Boolean ativo,
 
+    ResponsavelObrigacao responsavel
 ) {}

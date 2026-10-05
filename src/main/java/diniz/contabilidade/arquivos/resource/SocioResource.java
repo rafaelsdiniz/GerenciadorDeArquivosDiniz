@@ -1,6 +1,8 @@
 package diniz.contabilidade.arquivos.resource;
 
 import diniz.contabilidade.arquivos.dto.request.SocioRequestDTO;
+import diniz.contabilidade.arquivos.dto.response.SocioResponseDTO;
+import diniz.contabilidade.arquivos.security.UsuarioLogado;
 import diniz.contabilidade.arquivos.service.SocioService;
 import jakarta.annotation.security.RolesAllowed;
 import jakarta.inject.Inject;
@@ -24,28 +26,33 @@ public class SocioResource {
     @Inject
     SocioService socioService;
 
+    @Inject
+    UsuarioLogado usuario;
+
     @GET
     @RolesAllowed({"ADMIN", "FUNCIONARIO"})
     public Response listar() {
-        return Response.ok(socioService.listar()).build();
+        return Response.ok(usuario.filtrar(socioService.listar(), SocioResponseDTO::idEmpresa)).build();
     }
 
     @GET
     @Path("/{id}")
     @RolesAllowed({"ADMIN", "FUNCIONARIO"})
     public Response buscarPorId(@PathParam("id") Long id) {
-        return Response.ok(socioService.buscarPorId(id)).build();
+        return Response.ok(usuario.verificar(socioService.buscarPorId(id), SocioResponseDTO::idEmpresa)).build();
     }
 
     @GET
     @Path("/empresa/{idEmpresa}")
     @RolesAllowed({"ADMIN", "FUNCIONARIO"})
     public Response buscarPorEmpresa(@PathParam("idEmpresa") Long idEmpresa) {
+        usuario.exigirEmpresa(idEmpresa);
         return Response.ok(socioService.buscarPorEmpresa(idEmpresa)).build();
     }
 
+    /** Quadro societário é mantido pelo escritório. */
     @POST
-    @RolesAllowed({"ADMIN", "FUNCIONARIO"})
+    @RolesAllowed({"ADMIN"})
     public Response salvar(@Valid SocioRequestDTO dto) {
         return Response.status(Response.Status.CREATED)
                 .entity(socioService.salvar(dto))
@@ -54,14 +61,14 @@ public class SocioResource {
 
     @PUT
     @Path("/{id}")
-    @RolesAllowed({"ADMIN", "FUNCIONARIO"})
+    @RolesAllowed({"ADMIN"})
     public Response atualizar(@PathParam("id") Long id, @Valid SocioRequestDTO dto) {
         return Response.ok(socioService.atualizar(id, dto)).build();
     }
 
     @DELETE
     @Path("/{id}")
-    @RolesAllowed({"ADMIN", "FUNCIONARIO"})
+    @RolesAllowed({"ADMIN"})
     public Response deletar(@PathParam("id") Long id) {
         socioService.deletar(id);
         return Response.noContent().build();

@@ -21,6 +21,9 @@ public class ObrigacaoPendente extends DefaultEntity {
 
     private LocalDate dataEntrega;
 
+    /** Data em que a guia foi paga (confirmada pelo cliente ou pelo escritório). */
+    private LocalDate dataPagamento;
+
     @Enumerated(EnumType.STRING)
     private StatusObrigacao status;
 
@@ -56,6 +59,14 @@ public class ObrigacaoPendente extends DefaultEntity {
 
     public void setDataEntrega(LocalDate dataEntrega) {
         this.dataEntrega = dataEntrega;
+    }
+
+    public LocalDate getDataPagamento() {
+        return dataPagamento;
+    }
+
+    public void setDataPagamento(LocalDate dataPagamento) {
+        this.dataPagamento = dataPagamento;
     }
 
     public StatusObrigacao getStatus() {
