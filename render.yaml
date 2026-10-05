@@ -18,8 +18,6 @@ services:
         sync: false        # ex.: https://gerenciador-diniz.vercel.app
       - key: DB_GENERATION
         value: drop-and-create   # 1ª publicação: cria tabelas + dados de demonstração. Depois troque para: update
-      - key: DB_SEED
-        value: import.sql,seed-certidoes.sql,seed-fechamento.sql,seed-mensagens.sql   # 1ª publicação. Depois: no-file
       - key: DEC_DEMO
         value: "true"            # versão pública: comunicações do DEC fictícias (LGPD)
       - key: DEEPSEEK_API_KEY

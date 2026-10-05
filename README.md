@@ -125,8 +125,7 @@ Testes automatizados:
 | `DB_URL`, `DB_USER`, `DB_PASSWORD` | Conexão com o PostgreSQL | obrigatórias |
 | `PORT` | Porta HTTP | `8080` |
 | `CORS_ORIGINS` | Endereço do front-end | `http://localhost:4200` |
-| `DB_GENERATION` | (produção) `update` preserva os dados; `drop-and-create` recria | `update` |
-| `DB_SEED` | (produção) `import.sql` carrega a demonstração; `no-file` não carrega | `no-file` |
+| `DB_GENERATION` | (produção) `update` preserva os dados; `drop-and-create` recria e carrega a demonstração | `update` |
 | `JWT_PRIVATE_KEY_LOCATION`, `JWT_PUBLIC_KEY_LOCATION` | Chaves do JWT | chaves de desenvolvimento |
 | `DEC_URL`, `DEC_TOKEN` | Integração com o DEC Monitor | desligada |
 | `DEC_DEMO` | Comunicações fictícias (demonstração) | `false` |
@@ -136,8 +135,8 @@ Testes automatizados:
 
 - **API**: Render, a partir do `Dockerfile` (build Maven + JRE 21). O `render.yaml` cria o serviço;
   as chaves do JWT são geradas na imagem e nunca ficam no repositório.
-  Na 1ª publicação use `DB_GENERATION=drop-and-create` e
-  `DB_SEED=import.sql,seed-certidoes.sql,seed-fechamento.sql,seed-mensagens.sql`; depois `update` e `no-file`.
+  Na 1ª publicação use `DB_GENERATION=drop-and-create` (cria as tabelas e carrega a demonstração);
+  depois troque para `update`.
 - **Front-end**: Vercel.
 - **Banco**: Neon (PostgreSQL gratuito).
 
